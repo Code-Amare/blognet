@@ -78,8 +78,6 @@ const AddPost = ({
           setCategories(fetchedData);
           const initialVal = getCatValue(fetchedData[0]);
           setCategory(initialVal);
-          console.log("Categories Loaded:", fetchedData);
-          console.log("Initial Category Set:", initialVal);
         }
       } catch (err) {
         console.error("Error loading categories:", err);
@@ -108,7 +106,6 @@ const AddPost = ({
 
   // Handle Category Click with console debug
   const handleCategoryClick = (val) => {
-    console.log("🖱️ Category Clicked:", val);
     setCategory(String(val));
   };
 

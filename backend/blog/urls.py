@@ -9,4 +9,6 @@ urlpatterns = [
     path("my-post/", views.my_post),
     path("like-post/", views.like_post),
     path("categories/", views.BlogCategoryListView.as_view()),
+    path("post/comments/", views.CommentView.as_view()),
+    path("post/comments/<int:post_id>/", views.CommentView.as_view()),
 ]

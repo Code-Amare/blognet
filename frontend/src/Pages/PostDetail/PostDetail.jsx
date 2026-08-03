@@ -21,7 +21,12 @@ import {
 import UserContext from "../../context/UserContext";
 import styles from "./PostDetail.module.css";
 
-const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
+const API_BASE_URL = "http://127.0.0.1:8000";
+
+const PostDetail = ({
+  postDetailUrl = `${API_BASE_URL}/blog/post/`,
+  commentsUrl = `${API_BASE_URL}/blog/post/comments/`,
+}) => {
   const { postId } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
@@ -41,45 +46,65 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
 
   const socketRef = useRef(null);
 
-  // Helper to format local asset paths safely without placeholder domains
   const getAssetUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    const baseUrl = "http://127.0.0.1:8000";
-    return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+    return path.startsWith("/")
+      ? `${API_BASE_URL}${path}`
+      : `${API_BASE_URL}/${path}`;
   };
 
-  // 1. Fetch Post Detail & Sync State
+  // Helper to safely extract comments array from various API response shapes
+  const extractCommentsArray = (data) => {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.results)) return data.results;
+    if (Array.isArray(data?.comments)) return data.comments;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+  };
+
+  // 1. Fetch Post Detail & Comments in parallel
   useEffect(() => {
-    const fetchPostDetail = async () => {
+    const fetchPostAndComments = async () => {
       setLoading(true);
+      const authHeader = {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access")}`,
+        },
+      };
+
       try {
-        const response = await axios.get(`${postDetailUrl}${postId}/`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access")}`,
-          },
-        });
-        const data = response.data;
+        const [postRes, commentRes] = await Promise.allSettled([
+          axios.get(`${postDetailUrl}${postId}/`, authHeader),
+          axios.get(`${commentsUrl}${postId}/`, authHeader),
+        ]);
 
-        // Extract nested `post` payload returned by API console response
-        const postData = data?.post || data;
+        if (postRes.status === "fulfilled") {
+          const data = postRes.value.data;
+          const postData = data?.post || data;
+          setPost(postData);
+          setLikeCount(postData?.like ?? 0);
+          setIsLiked(Boolean(postData?.is_liked_by_me));
+        } else {
+          throw postRes.reason;
+        }
 
-        setPost(postData);
-        setLikeCount(postData?.like ?? 0);
-        setIsLiked(Boolean(postData?.is_liked_by_me));
-        setComments(postData?.comments || data?.comments || []);
+        if (commentRes.status === "fulfilled") {
+          const parsedComments = extractCommentsArray(commentRes.value.data);
+          setComments(parsedComments);
+        }
       } catch (err) {
-        console.error("Error fetching post detail:", err?.response || err);
+        console.error("Error loading article data:", err?.response || err);
         setError("Failed to load article. It may have been removed.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (postId) fetchPostDetail();
-  }, [postId, postDetailUrl]);
+    if (postId) fetchPostAndComments();
+  }, [postId, postDetailUrl, commentsUrl]);
 
   // 2. Real-time WebSocket Like Sync
   const onMessage = useCallback(
@@ -101,7 +126,7 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
         console.error("Failed to parse WebSocket message:", err);
       }
     },
-    [postId, user?.username],
+    [postId, user?.username]
   );
 
   useEffect(() => {
@@ -153,7 +178,7 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
             post_id: Number(postId),
             username: user?.username || "anonymous",
           },
-        }),
+        })
       );
     }
   };
@@ -165,18 +190,24 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
     setIsSubmittingComment(true);
     try {
       const res = await axios.post(
-        `${postDetailUrl}comments/${postId}/`,
-        { text: newComment },
+        `${commentsUrl}${postId}/`,
+        {
+          comment: newComment,
+          text: newComment,
+          post: Number(postId),
+        },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access")}`,
           },
-        },
+        }
       );
+
+      // Append res.data directly to preserve the full comment object shape
       setComments((prev) => [res.data, ...prev]);
       setNewComment("");
     } catch (err) {
-      console.error("Error submitting comment:", err);
+      console.error("Error submitting comment:", err?.response?.data || err);
     } finally {
       setIsSubmittingComment(false);
     }
@@ -205,8 +236,6 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
 
   const avatar = getAssetUrl(post?.profile?.avatar);
   const coverImage = getAssetUrl(post?.post_img);
-
-  // Author Display Name & Initial Letter
   const authorName = post?.profile?.display_name || post?.user || "Anonymous";
   const authorInitial = authorName.charAt(0).toUpperCase();
 
@@ -305,7 +334,7 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
         {post?.post_body
           ?.split("\n")
           .map((paragraph, idx) =>
-            paragraph.trim() ? <p key={idx}>{paragraph}</p> : <br key={idx} />,
+            paragraph.trim() ? <p key={idx}>{paragraph}</p> : <br key={idx} />
           )}
       </section>
 
@@ -340,15 +369,13 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
             </p>
           ) : (
             comments.map((comment, idx) => {
-              const commenterAvatar = getAssetUrl(comment.profile?.avatar);
+              const commenterAvatar = getAssetUrl(comment?.commenter?.avatar);
               const commenterName =
-                comment.profile?.display_name ||
-                comment.username ||
-                "Anonymous";
+                comment?.commenter?.display_name || "Anonymous";
               const commenterInitial = commenterName.charAt(0).toUpperCase();
 
               return (
-                <div key={comment.id || idx} className={styles.commentItem}>
+                <div key={comment?.id || idx} className={styles.commentItem}>
                   <div className={styles.commentAvatarWrapper}>
                     {commenterAvatar ? (
                       <img
@@ -369,10 +396,12 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
                         {commenterName}
                       </span>
                       <span className={styles.commentTime}>
-                        {getReadableTime(comment.timestamp)}
+                        {getReadableTime(
+                          comment?.timestamp || comment?.created_at
+                        )}
                       </span>
                     </div>
-                    <p className={styles.commentText}>{comment.text}</p>
+                    <p className={styles.commentText}>{comment?.comment}</p>
                   </div>
                 </div>
               );

@@ -14,12 +14,10 @@ const PostBlog = () => {
   useEffect(() => {
     if (response) {
       setPosts(response.results);
-      console.log(response);
     }
   }, [response]);
   if (loading) return <h1>Loading...</h1>;
   if (error) return console.log(error);
-  console.log(response);
   return (
     <div className={styles.PostBlogContainer}>
       {posts.length > 0

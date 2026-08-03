@@ -63,6 +63,10 @@ class PaginatedPostView(ListAPIView):
     permission_classes = [IsAuthenticated]
     pagination_class = PostPagination
 
+    def get_serializer(self, *args, **kwargs):
+        kwargs["user"] = self.request.user
+        return super().get_serializer(*args, **kwargs)
+
 
 class PostView(APIView):
     permission_classes = [IsAuthenticated]
@@ -106,8 +110,8 @@ class PostView(APIView):
 class CommentView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        post_id = request.query_params.get("post_id")
+    def get(self, request, post_id):
+
         if not post_id:
             return Response({"error": "post_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -115,13 +119,21 @@ class CommentView(APIView):
         serializer = CommentSerializer(comments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request):
+    def post(self, request, post_id=None):
         profile = get_object_or_404(Profile, user=request.user)
-        serializer = CommentSerializer(data=request.data)
+        
+        # Inject post ID from path if present in URL
+        data = request.data.copy()
+        if post_id and "post" not in data:
+            data["post"] = post_id
+
+        serializer = CommentSerializer(data=data)
         if serializer.is_valid():
-            serializer.save(commenter=profile) # Fixed assignment
+            serializer.save(commenter=profile)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class PostDetailView(APIView):
     permission_classes = [IsAuthenticated]
