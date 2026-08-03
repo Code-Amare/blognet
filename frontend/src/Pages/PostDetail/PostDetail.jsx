@@ -42,13 +42,11 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
   const socketRef = useRef(null);
 
   // Helper to format local asset paths safely without placeholder domains
-  // Updated helper to attach the base URL to relative media paths
   const getAssetUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    // Prepends base domain to relative paths like /media/...
     const baseUrl = "http://127.0.0.1:8000";
     return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
   };
@@ -64,7 +62,6 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
           },
         });
         const data = response.data;
-        console.log(data);
 
         // Extract nested `post` payload returned by API console response
         const postData = data?.post || data;
@@ -168,7 +165,7 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
     setIsSubmittingComment(true);
     try {
       const res = await axios.post(
-        `${postDetailUrl}${postId}/comments/`,
+        `${postDetailUrl}comments/${postId}/`,
         { text: newComment },
         {
           headers: {
@@ -208,6 +205,10 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
 
   const avatar = getAssetUrl(post?.profile?.avatar);
   const coverImage = getAssetUrl(post?.post_img);
+
+  // Author Display Name & Initial Letter
+  const authorName = post?.profile?.display_name || post?.user || "Anonymous";
+  const authorInitial = authorName.charAt(0).toUpperCase();
 
   return (
     <article className={styles.detailContainer}>
@@ -260,17 +261,20 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
 
         <div className={styles.authorBar}>
           <div className={styles.authorMeta}>
-            {avatar && (
-              <img
-                src={avatar}
-                alt={`${post?.profile?.display_name || "Author"} avatar`}
-                className={styles.avatar}
-              />
-            )}
+            <div className={styles.authorAvatarWrapper}>
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt={`${authorName} avatar`}
+                  className={styles.avatar}
+                />
+              ) : (
+                <div className={styles.avatarFallback}>{authorInitial}</div>
+              )}
+            </div>
+
             <div>
-              <h3 className={styles.authorName}>
-                {post?.profile?.display_name || "Anonymous"}
-              </h3>
+              <h3 className={styles.authorName}>{authorName}</h3>
               <span className={styles.timestamp}>
                 {getReadableTime(post?.timestamp)}
               </span>
@@ -335,30 +339,44 @@ const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
               No comments yet. Be the first to start the conversation!
             </p>
           ) : (
-            comments.map((comment, idx) => (
-              <div key={comment.id || idx} className={styles.commentItem}>
-                {comment.profile?.avatar && (
-                  <img
-                    src={getAssetUrl(comment.profile.avatar)}
-                    alt="Commenter avatar"
-                    className={styles.commentAvatar}
-                  />
-                )}
-                <div className={styles.commentContent}>
-                  <div className={styles.commentMeta}>
-                    <span className={styles.commentAuthor}>
-                      {comment.profile?.display_name ||
-                        comment.username ||
-                        "Anonymous"}
-                    </span>
-                    <span className={styles.commentTime}>
-                      {getReadableTime(comment.timestamp)}
-                    </span>
+            comments.map((comment, idx) => {
+              const commenterAvatar = getAssetUrl(comment.profile?.avatar);
+              const commenterName =
+                comment.profile?.display_name ||
+                comment.username ||
+                "Anonymous";
+              const commenterInitial = commenterName.charAt(0).toUpperCase();
+
+              return (
+                <div key={comment.id || idx} className={styles.commentItem}>
+                  <div className={styles.commentAvatarWrapper}>
+                    {commenterAvatar ? (
+                      <img
+                        src={commenterAvatar}
+                        alt={`${commenterName} avatar`}
+                        className={styles.commentAvatar}
+                      />
+                    ) : (
+                      <div className={styles.commentAvatarFallback}>
+                        {commenterInitial}
+                      </div>
+                    )}
                   </div>
-                  <p className={styles.commentText}>{comment.text}</p>
+
+                  <div className={styles.commentContent}>
+                    <div className={styles.commentMeta}>
+                      <span className={styles.commentAuthor}>
+                        {commenterName}
+                      </span>
+                      <span className={styles.commentTime}>
+                        {getReadableTime(comment.timestamp)}
+                      </span>
+                    </div>
+                    <p className={styles.commentText}>{comment.text}</p>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </section>

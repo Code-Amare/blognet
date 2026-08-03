@@ -309,3 +309,70 @@
     transform: rotate(360deg);
   }
 }
+/* Author Avatar Wrapper & Fallback */
+.authorAvatarWrapper {
+  width: 2.75rem;
+  height: 2.75rem;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #f1f5f9;
+  box-sizing: border-box;
+}
+
+.avatarFallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #ff5252;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  user-select: none;
+  border: 2px solid #f1f5f9;
+  box-sizing: border-box;
+}
+
+/* Commenter Avatar Wrapper & Fallback */
+.commentAvatarWrapper {
+  width: 2.25rem;
+  height: 2.25rem;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.commentAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #f1f5f9;
+  box-sizing: border-box;
+}
+
+.commentAvatarFallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #ff5252;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  user-select: none;
+  border: 2px solid #f1f5f9;
+  box-sizing: border-box;
+}

@@ -163,3 +163,19 @@
   font-size: 0.8rem;
   transition: transform 0.2s ease;
 }
+/* Avatar Fallback Badge for Post Header */
+.avatarFallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #ff5252;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  user-select: none;
+  box-sizing: border-box;
+}

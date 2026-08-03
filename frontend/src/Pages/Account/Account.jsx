@@ -23,7 +23,6 @@ const Account = ({ profileApiUrl = "http://127.0.0.1:8000/api/profile/" }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Helper to attach the base URL to relative media paths
   const getAssetUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) {
@@ -99,10 +98,12 @@ const Account = ({ profileApiUrl = "http://127.0.0.1:8000/api/profile/" }) => {
 
   const isSelf = currentUser?.username === profile.username;
   const avatar = getAssetUrl(profile.avatar);
+  const initialLetter = (profile.display_name || profile.username || "?")
+    .charAt(0)
+    .toUpperCase();
 
   return (
     <div className={styles.detailContainer}>
-      {/* Navigation Header */}
       <nav className={styles.navHeader}>
         <button
           type="button"
@@ -114,14 +115,17 @@ const Account = ({ profileApiUrl = "http://127.0.0.1:8000/api/profile/" }) => {
         </button>
       </nav>
 
-      {/* Profile Header */}
       <header className={styles.profileHeader}>
         <div className={styles.avatarSection}>
-          <img
-            src={avatar || "https://via.placeholder.com/120?text=User"}
-            alt={`${profile.display_name}'s avatar`}
-            className={styles.avatar}
-          />
+          {avatar ? (
+            <img
+              src={avatar}
+              alt={`${profile.display_name}'s avatar`}
+              className={styles.avatar}
+            />
+          ) : (
+            <div className={styles.avatarFallback}>{initialLetter}</div>
+          )}
         </div>
 
         <div className={styles.profileMeta}>
@@ -138,7 +142,6 @@ const Account = ({ profileApiUrl = "http://127.0.0.1:8000/api/profile/" }) => {
           </div>
           <p className={styles.username}>@{profile.username}</p>
 
-          {/* User Stats Bar */}
           <div className={styles.statsBar}>
             <div className={styles.statItem}>
               <span className={styles.statValue}>
@@ -159,7 +162,6 @@ const Account = ({ profileApiUrl = "http://127.0.0.1:8000/api/profile/" }) => {
 
       <hr className={styles.divider} />
 
-      {/* User Articles Section */}
       <section className={styles.articlesSection}>
         <div className={styles.sectionHeader}>
           <h2>

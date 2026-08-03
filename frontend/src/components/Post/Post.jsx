@@ -42,7 +42,7 @@ const Post = ({ post }) => {
   };
 
   const getAvatarUrl = (avatarPath) => {
-    if (!avatarPath) return "https://via.placeholder.com/150";
+    if (!avatarPath) return null; // Return null instead of placeholder URL
     if (avatarPath.includes("http://") || avatarPath.includes("https://")) {
       return avatarPath;
     }
@@ -59,6 +59,10 @@ const Post = ({ post }) => {
   const avatar = getAvatarUrl(post?.profile?.avatar);
   const readableTime = getReadableTime(post?.timestamp);
   const truncatedBody = truncateText(post?.post_body, MAX_BODY_LENGTH);
+
+  // Extract initial letter for avatar fallback
+  const authorDisplayName = post?.profile?.display_name || post?.user || "A";
+  const initialLetter = authorDisplayName.charAt(0).toUpperCase();
 
   const onMessage = useCallback(
     (event) => {
@@ -80,7 +84,7 @@ const Post = ({ post }) => {
         console.error("Failed to parse WebSocket message:", err);
       }
     },
-    [post?.id, user?.username],
+    [post?.id, user?.username]
   );
 
   useEffect(() => {
@@ -117,7 +121,7 @@ const Post = ({ post }) => {
             post_id: id,
             username: user?.username || "anonymous",
           },
-        }),
+        })
       );
     }
   };
@@ -127,15 +131,18 @@ const Post = ({ post }) => {
       <header className={styles.header}>
         <div className={styles.left}>
           <div className={styles.avatarWrapper}>
-            <img
-              src={avatar}
-              alt={`${post?.profile?.display_name || "User"} avatar`}
-            />
+            {avatar ? (
+              <img
+                src={avatar}
+                alt={`${authorDisplayName} avatar`}
+                className={styles.avatar}
+              />
+            ) : (
+              <div className={styles.avatarFallback}>{initialLetter}</div>
+            )}
           </div>
           <div className={styles.authorMeta}>
-            <h1 className={styles.authorName}>
-              {post?.profile?.display_name || post?.user || "Anonymous"}
-            </h1>
+            <h1 className={styles.authorName}>{authorDisplayName}</h1>
             <span className={styles.timestamp}>{readableTime}</span>
           </div>
         </div>

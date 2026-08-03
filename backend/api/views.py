@@ -17,6 +17,8 @@ from django.contrib.auth import get_user_model
 from blog.models import BlogPost, LikePost
 from user.models import Profile
 from django.shortcuts import get_object_or_404
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
 
 
 
@@ -305,6 +307,63 @@ class UserProfileView(APIView):
 
         return Response(profile_data, status=status.HTTP_200_OK)
 
+
+    
+class ProfileEditView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get(self, request):
+        print("touch")
+        user = request.user
+        profile, _ = Profile.objects.get_or_create(user=user)
+
+        return Response({
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "display_name": profile.display_name or user.username,
+            "avatar": profile.avatar.url if profile.avatar else None,
+        }, status=status.HTTP_200_OK)
+
+    def patch(self, request):
+        user = request.user
+        profile, _ = Profile.objects.get_or_create(user=user)
+
+        # 1. Update User model fields
+        if "first_name" in request.data:
+            user.first_name = request.data.get("first_name")
+        if "last_name" in request.data:
+            user.last_name = request.data.get("last_name")
+        if "email" in request.data:
+            user.email = request.data.get("email")
+        user.save()
+
+        # 2. Update Profile model fields
+        if "display_name" in request.data:
+            profile.display_name = request.data.get("display_name")
+        
+        # Handle avatar file upload
+        if "avatar" in request.FILES:
+            profile.avatar = request.FILES["avatar"]
+        elif request.data.get("remove_avatar") == "true":
+            profile.avatar.delete(save=False)
+            profile.avatar = None
+
+        profile.save()
+
+        return Response({
+            "message": "Profile updated successfully!",
+            "profile": {
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "display_name": profile.display_name,
+                "avatar": profile.avatar.url if profile.avatar else None,
+            }
+        }, status=status.HTTP_200_OK)
 
 @api_view(["GET"])
 def health_check(request):
