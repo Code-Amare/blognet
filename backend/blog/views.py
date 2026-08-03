@@ -13,6 +13,7 @@ from .serializers import PostSerializer, CommentSerializer
 from user.models import Profile
 
 
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def like_post(request):
@@ -133,6 +134,7 @@ class PostDetailView(APIView):
 
         serializer = PostSerializer(post, user=user)
         return Response({"post": serializer.data}, status=status.HTTP_200_OK)
+
 
 
 class BlogCategoryListView(APIView):

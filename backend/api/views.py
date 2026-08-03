@@ -12,6 +12,15 @@ from user.models import Profile
 from django.core.files.base import ContentFile
 from django.db import transaction
 import requests
+from django.contrib.auth import get_user_model
+
+from blog.models import BlogPost, LikePost
+from user.models import Profile
+from django.shortcuts import get_object_or_404
+
+
+
+User = get_user_model()
 
 
 class RegisterView(APIView):
@@ -241,6 +250,61 @@ class GoogleRegisterView(APIView):
         },
         status=status.HTTP_201_CREATED,
     )
+
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, username):
+        # Fetch target user profile by username
+        user_obj = get_object_or_404(User, username=username)
+        profile = get_object_or_404(Profile, user=user_obj)
+
+        # Get all posts by this profile
+        posts = BlogPost.objects.filter(profile=profile)
+
+        # Check authenticated user's likes for optimistic UI
+        liked_post_ids = set()
+        if request.user.is_authenticated:
+            liked_post_ids = set(
+                LikePost.objects.filter(
+                    profile__user=request.user, 
+                    is_liked=True
+                ).values_list("post_id", flat=True)
+            )
+
+        posts_data = [
+            {
+                "id": post.id,
+                "post_title": post.post_title,
+                "post_body": post.post_body,
+                "post_title_color": post.post_title_color,
+                "post_img": post.post_img.url if post.post_img else None,
+                "post_category": post.post_category,
+                "like": post.like,
+                "is_liked_by_me": post.id in liked_post_ids,
+                "timestamp": post.timestamp.isoformat(),
+                "comments_count": post.comments.count(),
+            }
+            for post in posts
+        ]
+
+        # Calculate totals
+        total_likes = sum(p.like for p in posts)
+
+        profile_data = {
+            "username": user_obj.username,
+            "display_name": profile.display_name or user_obj.username,
+            "avatar": profile.avatar.url if profile.avatar else None,
+            "stats": {
+                "total_posts": posts.count(),
+                "total_likes": total_likes,
+            },
+            "posts": posts_data,
+        }
+
+        return Response(profile_data, status=status.HTTP_200_OK)
+
 
 @api_view(["GET"])
 def health_check(request):
