@@ -1,96 +1,277 @@
-.LoginContainer {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+/* Layout & Page Container */
+.loginContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  background-color: #ffffff;
+  overflow: hidden;
 }
 
-.formContainer {
-    display: flex;
-    flex: 1;
-    justify-content: space-between;
-    align-items: center;
-    height: 100%;
+.mainWrapper {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.formSection {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 3rem;
+  z-index: 2;
+}
+
+.formCard {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.title {
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  font-weight: 800;
+  color: var(--accent-color, #FF5252);
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.02em;
+  transition: color 0.6s ease;
+}
+
+.subtitle {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0 0 1.5rem 0;
+}
+
+/* Top-Level Error Banner */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.25rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  color: #dc2626;
+  font-size: 0.9rem;
+  font-weight: 500;
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.errorIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .form {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 1em;
-    width: 40%;
-    padding: 1em 2em 1em 2em;
-    box-shadow: 3px 0 20px rgba(0, 0, 0, 0.281);
-    background-color: var(--main);
-    margin: 0;
-    background-color: rgb(235, 235, 235);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-.form .h1 {
-    margin-bottom: 0.5em;
-    color: var(--food);
-    font-size: 4em;
-    transition: color var(--animation-dur) ease;
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
-.form .input {
-    outline: 1px solid var(--food);
-    border: none;
-    padding: 0.4em 0.8em;
-    font-size: 1.1em;
-    color: black;
-    border-radius: 0.1em;
-    transition: outline var(--animation-dur) ease;
-    width: 100%;
+.label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
 }
 
-.form .input:focus {
-    outline: 2px solid var(--main-hover);
+.input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.5rem;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.form .input.error {
-    outline: 2px solid rgb(240, 27, 27) !important;
+.input:focus {
+  border-color: var(--accent-color, #FF5252);
+  box-shadow: 0 0 0 3px rgba(255, 82, 82, 0.15);
 }
 
-.form .input.success {
-    outline: 2px solid rgb(52, 240, 27) !important;
+.inputError {
+  border-color: #ef4444;
 }
 
-.form .subBtn {
-    font-size: 1.4em;
-    font-weight: 600;
-    border: none;
-    outline: none;
-    padding: 0.6em 0.8em;
-    color: white;
-    cursor: pointer;
-    background-color: var(--food) !important;
-    transition: background-color var(--animation-dur) ease;
+/* Submit Button - Completely Static on Hover */
+.submitBtn {
+  margin-top: 0.75rem;
+  padding: 0.85rem 1rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: var(--accent-color, #FF5252);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 8px 18px -4px var(--accent-color, #FF5252);
+  transition: background-color 0.6s ease, box-shadow 0.6s ease, opacity 0.2s ease;
 }
 
-.form .p {
-    color: #757575;
+.submitBtn:hover{
+    background: var(--accent-color, #FF5252);
 }
 
-.form .p .a {
-    color: #535353;
+.submitBtn:disabled {
+  opacity: 0.55;
+  color: #ffffff;
+  background-color: var(--accent-color, #FF5252);
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
-.successMessage {
-    color: green;
-    font-weight: bold;
-    font-family: sans-serif;
-    margin: 10px 0;
+.footerText {
+  margin-top: 1.75rem;
+  font-size: 0.95rem;
+  color: #64748b;
+  text-align: center;
 }
 
-label {
-    /* margin-bottom: 0.5em; */
-    display: flex;
-    flex-direction: column;
-    width: 15em;
+.link {
+  color: var(--accent-color, #FF5252);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.6s ease;
 }
 
-.errorMessage {
-    /* visibility: hidden; */
-    color: var(--error-color);
+.link:hover {
+  text-decoration: underline;
+}
+
+/* Visual Side Section */
+.visualSection {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #ffffff;
+  height: 100%;
+}
+
+.visualWrapper {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.visualImg {
+  width: 100%;
+  height: auto;
+  max-height: 320px;
+  object-fit: contain;
+}
+
+/* Responsive Media Queries */
+@media (max-width: 868px) {
+  .mainWrapper {
+    grid-template-columns: 1fr;
+    padding: 1.5rem;
+  }
+
+  .visualSection {
+    order: -1;
+    height: auto;
+    margin-bottom: 1rem;
+  }
+
+  .visualImg {
+    max-height: 200px;
+  }
+
+  .formSection {
+    padding: 0;
+  }
+
+  .title {
+    text-align: center;
+  }
+
+  .subtitle {
+    text-align: center;
+  }
+}
+/* Google Sign-In Button */
+.googleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.googleBtn:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.googleBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.googleIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Divider line */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 1.25rem 0;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background-color: #e2e8f0;
+}
+
+.dividerText {
+  padding: 0 0.75rem;
+  font-size: 0.825rem;
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: lowercase;
 }
