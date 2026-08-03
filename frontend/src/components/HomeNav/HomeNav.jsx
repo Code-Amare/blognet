@@ -4,46 +4,55 @@ import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import { useEffect } from "react";
 
-const HomeNav = ({ currentPage, navRef, isHomePage = true }) => {
-    const navigation = useNavigate();
-    const { isAuthenticated, loading, user } = useAuth(
-        "http://127.0.0.1:8000/api/token/check/",
-        "http://127.0.0.1:8000/api/token/refresh/"
-    );
+const HomeNav = ({ currentPage, isHomePage = true, bgColor }) => {
+  const navigation = useNavigate();
+  const { isAuthenticated, loading } = useAuth(
+    "http://127.0.0.1:8000/api/token/check/",
+    "http://127.0.0.1:8000/api/token/refresh/",
+  );
 
-    useEffect(() => {
-        if (loading) return;
+  useEffect(() => {
+    if (loading) return;
 
-        if (isAuthenticated) {
-            navigation("/blog");
-            return;
-        }
-    }, [isAuthenticated, loading]);
-
-    if (loading) {
-        return <h1>Loading...</h1>;
+    if (isAuthenticated) {
+      navigation("/blog");
     }
-    return (
-        <div className={styles.HomeNavContainer} ref={navRef}>
-            <div
-                className={styles.left}
-                onClick={() => {
-                    navigation("/");
-                }}
-            >
-                <img src={Logo} alt="Logo" />
-                <h1>BlogNet</h1>
-            </div>
-            <div className={styles.right}>
-                <Link to="/login" className={currentPage === "signIn" ? styles.currentPage : ""}>
-                    Sign In
-                </Link>
-                <Link to="/Register" className={currentPage === "signUp" ? styles.currentPage : ""}>
-                    Sign Up
-                </Link>
-            </div>
-        </div>
-    );
+  }, [isAuthenticated, loading, navigation]);
+
+  if (loading) {
+    return <div className={styles.loadingPlaceholder}>Loading...</div>;
+  }
+
+  return (
+    <header
+      className={styles.HomeNavContainer}
+      style={{ backgroundColor: bgColor }}
+    >
+      <div className={styles.left} onClick={() => navigation("/")}>
+        <img src={Logo} alt="BlogNet Logo" className={styles.logoImg} />
+        <h1 className={styles.brandTitle}>BlogNet</h1>
+      </div>
+
+      <nav className={styles.right}>
+        <Link
+          to="/login"
+          className={`${styles.navLink} ${
+            currentPage === "signIn" ? styles.currentPage : ""
+          }`}
+        >
+          Sign In
+        </Link>
+        <Link
+          to="/Register"
+          className={`${styles.navLink} ${styles.signUpBtn} ${
+            currentPage === "signUp" ? styles.currentPage : ""
+          }`}
+        >
+          Sign Up
+        </Link>
+      </nav>
+    </header>
+  );
 };
 
 export default HomeNav;

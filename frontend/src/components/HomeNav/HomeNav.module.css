@@ -1,72 +1,113 @@
 .HomeNavContainer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: var(--food);
-    padding: 0.5em 2em;
-    transition: background-color var(--animation-dur) ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 2.5rem;
+  transition: background-color 0.4s ease;
+  z-index: 10;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .left {
-    display: flex;
-    gap: 1em;
-    align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
 }
 
-.left:hover {
-    cursor: pointer;
+.logoImg {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
 }
 
-.left img {
-    width: 3em;
-}
-
-.left h1 {
-    font-size: 2.5em;
-    color: white;
+.brandTitle {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .right {
-    display: flex;
-    gap: 2em;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
 }
 
-.right a {
-    text-decoration: none;
-    font-weight: 500;
-    color: white;
-    font-size: 1.2em;
-    position: relative;
+.navLink {
+  text-decoration: none;
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 1.05rem;
+  position: relative;
+  padding: 0.4rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  transition: opacity 0.2s ease;
 }
 
-.right a::after {
-    content: "";
-    position: absolute;
-    background-color: #fff;
-    width: 105%;
-    height: 0.3em;
-    transform-origin: top right;
-    transform: scaleX(0);
-    transition: transform 0.5s ease;
-    top: 105%;
-    right: -2.5%;
+/* Modern Hover Underline Effect */
+.navLink::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0%;
+  height: 2px;
+  background-color: #ffffff;
+  transition: width 0.3s ease, left 0.3s ease;
+  border-radius: 2px;
 }
 
-.right a:hover::after {
-    transform-origin: top left;
-    transform: scaleX(1);
+.navLink:hover::after,
+.navLink.currentPage::after {
+  width: 100%;
+  left: 0;
 }
 
-.right a.currentPage::after {
-    transform: scaleX(1);
+/* Distinct Pill-style for Sign Up CTA */
+.signUpBtn {
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: 0.5rem 1.2rem;
+  border-radius: 2rem;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
-.right a.currentPage::after {
-    position: absolute;
-    content: '';
-    width: 105%;
-    height: 0.3em;
-    background-color: #fff;
-    top: 105%;
-    right: -2.5%;
+.signUpBtn::after {
+  display: none; /* No underline on button style */
+}
+
+.signUpBtn:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.loadingPlaceholder {
+  padding: 1rem 2.5rem;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Mobile Nav Tweaks */
+@media (max-width: 600px) {
+  .HomeNavContainer {
+    padding: 0.75rem 1.25rem;
+  }
+
+  .brandTitle {
+    font-size: 1.4rem;
+  }
+
+  .right {
+    gap: 0.75rem;
+  }
+
+  .navLink {
+    font-size: 0.95rem;
+  }
 }

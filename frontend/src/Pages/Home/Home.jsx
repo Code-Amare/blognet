@@ -1,81 +1,107 @@
+import { useState, useEffect } from "react";
 import styles from "./Home.module.css";
 import HomeNav from "../../components/HomeNav/HomeNav";
+
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
+
 import FoodShowCase from "../../assets/food.png";
 import TechShowCase from "../../assets/tech.png";
 import EduShowCase from "../../assets/edu.png";
-import { useEffect, useRef } from "react";
 
-const Home = ({ interval = 6000 }) => {
-    // const btnRef = useRef();
-    const imgRef = useRef();
-    const showCaseRef = useRef();
-    const navRef = useRef();
-    const btnRef = useRef();
-    
+// Reordered array so Food (#FF5252) is at index 0
+const STATES = [
+  { visualSrc: FoodVisual, showCaseSrc: FoodShowCase, color: "#FF5252" },
+  { visualSrc: TechVisual, showCaseSrc: TechShowCase, color: "#407BFF" },
+  { visualSrc: EduVisual, showCaseSrc: EduShowCase, color: "#22C55E" },
+];
 
-    const states = [
-        { visualSrc: TechVisual, showCaseSrc: TechShowCase, color: "#407BFF" },
-        { visualSrc: EduVisual, showCaseSrc: EduShowCase, color: "#5BEA84" },
-        { visualSrc: FoodVisual, showCaseSrc: FoodShowCase, color: "#FF725E" },
-    ];
+const Home = ({ interval = 8000 }) => {
+  // Starts on index 0 (Red / Food Theme)
+  const [index, setIndex] = useState(0);
+  const [animState, setAnimState] = useState("enter");
 
-    useEffect(() => {
-        let idx = 0;
-        const timer = setInterval(() => {
-            const { visualSrc, showCaseSrc, color } = states[idx];
+  // Preload assets for zero-lag switching
+  useEffect(() => {
+    STATES.forEach((state) => {
+      const img1 = new Image();
+      img1.src = state.visualSrc;
+      const img2 = new Image();
+      img2.src = state.showCaseSrc;
+    });
+  }, []);
 
-            if (showCaseRef.current) {
-                showCaseRef.current.classList.remove(styles.animateSlide);
-                showCaseRef.current.classList.add(styles.animateOut);
-                setTimeout(() => {
-                    showCaseRef.current.classList.remove(styles.animateOut);
-                    showCaseRef.current.classList.add(styles.animateSlide);
-                    showCaseRef.current.src = showCaseSrc;
-                }, 400);
-            }
+  useEffect(() => {
+    const timer = setInterval(() => {
+      // Step 1: Slide current card down out of view
+      setAnimState("exit");
 
-            if (imgRef.current) {
-                imgRef.current.src = visualSrc;
-            }
+      // Step 2: Swap state while off-screen (500ms duration)
+      setTimeout(() => {
+        setIndex((prev) => (prev + 1) % STATES.length);
+        // Step 3: Slide new card up into view
+        setAnimState("enter");
+      }, 500);
+    }, interval);
 
-            if (btnRef.current) {
-                btnRef.current.style.setProperty("background-color", color, "important");
-            }
+    return () => clearInterval(timer);
+  }, [interval]);
 
-            if (navRef.current) {
-                navRef.current.style.backgroundColor = color;
-            }
+  const current = STATES[index];
 
-            idx = (idx + 1) % states.length;
-        }, interval);
+  return (
+    <div
+      className={styles.pageWrapper}
+      style={{
+        "--accent-color": current.color,
+      }}
+    >
+      <HomeNav bgColor={current.color} />
 
-        return () => clearInterval(timer);
-    }, [interval]);
-
-    return (
-        <div className={styles.HomeContainer}>
-            <HomeNav navRef={navRef} />
-            <div className={styles.hero}>
-                <div className={styles.text}>
-                    <h1>Write freely, share openly, grow daily.</h1>
-                    <p>A platform to express yourself and connect with others easily.</p>
-                    <button ref={btnRef}>Create Your Blog</button>
-                </div>
-                <div className={styles.visual}>
-                    <img src={FoodVisual} alt="Visual" ref={imgRef} />
-                </div>
-                <img
-                    src={FoodShowCase}
-                    alt="Showcase"
-                    ref={showCaseRef}
-                    className={`${styles.animateSlide} ${styles.imgVisual}`}
-                />
-            </div>
+      <main className={styles.heroSection}>
+        {/* Left Column */}
+        <div className={styles.textColumn}>
+          <h1 className={styles.heading}>
+            Write freely, <br />
+            share openly, <br />
+            grow daily.
+          </h1>
+          <p className={styles.subheading}>
+            A modern platform to express your ideas, publish your passions, and
+            build a connected community.
+          </p>
+          <button className={styles.primaryBtn}>Create Your Blog</button>
         </div>
-    );
+
+        {/* Right Column: GIF Visual */}
+        <div className={styles.visualColumn}>
+          <div className={styles.gifCard}>
+            <img
+              src={current.visualSrc}
+              alt="Dynamic visual animation"
+              className={styles.gifImage}
+            />
+          </div>
+        </div>
+
+        {/* Bottom Viewport: Card Deck */}
+        <div className={styles.deckViewport}>
+          <div
+            className={`${styles.deckCard} ${
+              animState === "exit" ? styles.cardSlideDown : styles.cardSlideUp
+            }`}
+          >
+            <img
+              src={current.showCaseSrc}
+              alt="Photoshop Card Showcase"
+              className={styles.deckImage}
+            />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 };
 
 export default Home;
