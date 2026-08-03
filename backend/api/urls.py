@@ -10,5 +10,7 @@ urlpatterns = [
     path("login/", views.EmailLoginView.as_view(), name="login"),
     path("token/check/", views.TokenCheck.as_view()),
     path("profile/", views.ProfileView.as_view()),
+    path("google/login/", views.GoogleLoginView.as_view()),
+    path("google/register/", views.GoogleRegisterView.as_view()),
     path("health/", views.health_check),
 ]

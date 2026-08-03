@@ -9,6 +9,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import ProfileSerializer
 from rest_framework.permissions import IsAuthenticated
 from user.models import Profile
+from django.core.files.base import ContentFile
+from django.db import transaction
+import requests
 
 
 class RegisterView(APIView):
@@ -28,7 +31,7 @@ class EmailLoginView(APIView):
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response(
-                {"success": False, "errors": {"email": "Email doesn't exist."}}, status=status.HTTP_401_UNAUTHORIZED
+                {"success": False, "errors": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
             )
         user = authenticate(username=user.username, password=password)
 
@@ -41,9 +44,7 @@ class EmailLoginView(APIView):
         return Response(
             {
                 "success": False,
-                "errors": {
-                    "password": "Invalid Password",
-                },
+                "errors": "Invalid credentials",
             },
             status=status.HTTP_401_UNAUTHORIZED,
         )
@@ -81,6 +82,165 @@ class ProfileView(APIView):
         serializer = ProfileSerializer(profile)
         return Response(serializer.data)
 
+class GoogleLoginView(APIView):
+
+  def post(self, request):
+    token = request.data.get("token")
+
+    if not token:
+      return Response(
+          {"errors": "Google token is required."},
+          status=status.HTTP_400_BAD_REQUEST,
+      )
+
+    # Validate Google Token via Google's OAuth2 API
+    try:
+      google_response = requests.get(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          headers={"Authorization": f"Bearer {token}"},
+          timeout=10,
+      )
+
+      if google_response.status_code != 200:
+        return Response(
+            {"errors": "Invalid Google token."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+      google_user = google_response.json()
+    except requests.RequestException:
+      return Response(
+          {"errors": "Unable to verify token with Google."},
+          status=status.HTTP_400_BAD_REQUEST,
+      )
+
+    email = google_user.get("email")
+    email_verified = google_user.get("email_verified", False)
+
+    if not email_verified or not email:
+      return Response(
+          {"errors": "Google email is not verified."},
+          status=status.HTTP_400_BAD_REQUEST,
+      )
+
+    # Check if user exists in the standard User model
+    user = User.objects.filter(email=email).first()
+
+    if not user:
+      return Response(
+          {"errors": "User not found. Please register first."},
+          status=status.HTTP_404_NOT_FOUND,
+      )
+
+    if not user.is_active:
+      return Response(
+          {"errors": "Your account has been disabled."},
+          status=status.HTTP_403_FORBIDDEN,
+      )
+
+    # Generate JWT Tokens
+    refresh = RefreshToken.for_user(user)
+    return Response(
+        {
+            "success": True,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+class GoogleRegisterView(APIView):
+
+  def post(self, request):
+    token = request.data.get("token")
+
+    if not token:
+      return Response(
+          {"errors": "Google token is required."},
+          status=status.HTTP_400_BAD_REQUEST,
+      )
+
+    # Validate Google Token
+    try:
+      google_response = requests.get(
+          "https://www.googleapis.com/oauth2/v3/userinfo",
+          headers={"Authorization": f"Bearer {token}"},
+          timeout=10,
+      )
+      google_response.raise_for_status()
+      google_user = google_response.json()
+    except Exception:
+      return Response(
+          {"errors": "Invalid Google token."},
+          status=status.HTTP_400_BAD_REQUEST,
+      )
+
+    email = google_user.get("email")
+    first_name = google_user.get("given_name", "")
+    last_name = google_user.get("family_name", "")
+    picture_url = google_user.get("picture")
+    email_verified = google_user.get("email_verified", False)
+
+    if not email_verified or not email:
+      return Response(
+          {"errors": "Google email is not verified."},
+          status=status.HTTP_400_BAD_REQUEST,
+      )
+
+    # Check existing user by email
+    if User.objects.filter(email=email).exists():
+      return Response(
+          {"errors": "User already exists. Please log in."},
+          status=status.HTTP_400_BAD_REQUEST,
+      )
+
+    # Generate unique username (fallback to email prefix if needed)
+    username = email.split("@")[0]
+    base_username = username
+    counter = 1
+    while User.objects.filter(username=username).exists():
+      username = f"{base_username}{counter}"
+      counter += 1
+
+    # Create new standard user inside a transaction block
+    with transaction.atomic():
+      user = User.objects.create_user(
+          username=username,
+          email=email,
+          first_name=first_name,
+          last_name=last_name,
+      )
+      user.set_unusable_password()
+      user.save()
+
+      # Get or create associated user Profile
+      profile, _ = Profile.objects.get_or_create(
+          user=user, defaults={"avatar": "avatars/default.webp"}
+      )
+
+      # Handle profile picture saving directly to the Profile instance
+      if picture_url:
+        try:
+          img_response = requests.get(picture_url, timeout=10)
+          if img_response.status_code == 200:
+            file_name = f"google_avatar_{user.id}.jpg"
+            profile.avatar.save(
+                file_name, ContentFile(img_response.content), save=True
+            )
+        except Exception:
+          pass  # Fallback to default avatar if picture fetching fails
+
+    # Return JWT Tokens for immediate session start
+    refresh = RefreshToken.for_user(user)
+    return Response(
+        {
+            "success": True,
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+        },
+        status=status.HTTP_201_CREATED,
+    )
 
 @api_view(["GET"])
 def health_check(request):
