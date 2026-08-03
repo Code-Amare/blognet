@@ -7,4 +7,5 @@ urlpatterns = [
     path("posts/", views.PaginatedPostView.as_view()),
     path("my-post/", views.my_post),
     path("like-post/", views.like_post),
+    path("categories/", views.BlogCategoryListView.as_view()),
 ]
