@@ -84,7 +84,7 @@
 .gifImage {
   width: 100%;
   height: auto;
-  max-height: 280px;
+  max-height: 380px;
   object-fit: contain;
 }
 
@@ -125,13 +125,14 @@
   object-position: top center; 
 }
 
+
 /* Physical 2-Phase Motion Animations */
 .cardSlideDown {
-  animation: slideDownPhysics 0.5s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  animation: slideDownPhysics var(--anim-speed, 0.35s) cubic-bezier(0.4, 0, 0.6, 1) forwards;
 }
 
 .cardSlideUp {
-  animation: slideUpPhysics 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideUpPhysics var(--anim-speed, 0.35s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes slideDownPhysics {
@@ -153,28 +154,55 @@
 }
 
 /* Mobile & Tablet Responsive Tweaks */
+/* Mobile & Tablet Responsive Tweaks */
 @media (max-width: 900px) {
+  .pageWrapper {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-y: auto; /* Allows clean scrolling on small screens */
+  }
+
   .heroSection {
     grid-template-columns: 1fr;
+    align-items: start; /* Pulls content to top instead of vertically centering/stretching */
+    align-content: start;
+    justify-items: center;
     text-align: center;
-    padding: 1rem 1.5rem 8rem 1.5rem;
-    gap: 1.5rem;
+    padding: 1rem 1.5rem 10rem 1.5rem; /* Reduced top padding, tight spacing */
+    gap: 0.5rem; /* Controls distance between GIF and Text directly */
+  }
+
+  .visualColumn {
+    order: -1; /* Keeps GIF on top */
+    margin-bottom: 0;
+    padding: 0;
+  }
+
+  .gifCard {
+    max-width: 220px; /* Slightly tighter wrapper frame */
+  }
+
+  .gifImage {
+    max-height: 160px; /* Compact height so GIF sits snug above heading */
   }
 
   .textColumn {
     margin: 0 auto;
+    padding-top: 0;
   }
 
-  .visualColumn {
-    order: -1;
+  .heading {
+    margin-top: 0;
+    margin-bottom: 0.75rem; /* Tight heading spacing */
   }
 
-  .gifImage {
-    max-height: 180px;
+  .subheading {
+    margin-bottom: 1.5rem;
   }
 
   .deckViewport {
-    height: 150px;
+    height: 130px;
   }
 
   .deckCard {

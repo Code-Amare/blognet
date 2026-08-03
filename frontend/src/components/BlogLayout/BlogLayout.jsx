@@ -70,12 +70,24 @@ const BlogLayout = () => {
     fetchAvatar();
   }, [loading, isAuthenticated, navigate]);
 
+  // Toggle sidebar and persist in localStorage
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
       const nextState = !prev;
       localStorage.setItem("sidebarOpen", JSON.stringify(nextState));
       return nextState;
     });
+  };
+
+  // Helper function to auto-close navigation on mobile screens
+  const handleNavClick = (route) => {
+    if (window.innerWidth <= 768) {
+      setIsSidebarOpen(false);
+      localStorage.setItem("sidebarOpen", JSON.stringify(false));
+    }
+    if (route) {
+      navigate(route);
+    }
   };
 
   const handleConfirmLogout = () => {
@@ -104,13 +116,16 @@ const BlogLayout = () => {
           >
             <FaBars />
           </button>
-          <div className={styles.brand} onClick={() => navigate("/blog")}>
+          <div className={styles.brand} onClick={() => handleNavClick("/blog")}>
             <img src={Logo} alt="BlogNet Logo" className={styles.logoImg} />
             <span className={styles.brandTitle}>BlogNet</span>
           </div>
         </div>
 
-        <div className={styles.right} onClick={() => navigate("/blog/account")}>
+        <div
+          className={styles.right}
+          onClick={() => handleNavClick("/blog/account")}
+        >
           <span className={styles.username}>
             {displayName || user?.username || "Account"}
           </span>
@@ -136,10 +151,11 @@ const BlogLayout = () => {
 
       {/* Main Container */}
       <div className={styles.mainWrapper}>
+        {/* Mobile Backdrop - Clicking closes sidebar */}
         {isSidebarOpen && (
           <div
             className={styles.mobileBackdrop}
-            onClick={() => setIsSidebarOpen(false)}
+            onClick={() => handleNavClick()}
           />
         )}
 
@@ -150,7 +166,7 @@ const BlogLayout = () => {
         >
           <div className={styles.actionWrapper}>
             <button
-              onClick={() => navigate("/blog/add-post/")}
+              onClick={() => handleNavClick("/blog/add-post/")}
               className={styles.addPostBtn}
             >
               <FaPlus className={styles.btnIcon} />
@@ -161,7 +177,7 @@ const BlogLayout = () => {
           <nav className={styles.navList}>
             <ul>
               <li
-                onClick={() => navigate("/blog")}
+                onClick={() => handleNavClick("/blog")}
                 className={currentPage === "blog" ? styles.currentPage : ""}
               >
                 <MdMenuBook className={styles.navIcon} />
@@ -169,7 +185,7 @@ const BlogLayout = () => {
               </li>
 
               <li
-                onClick={() => navigate("/blog/post")}
+                onClick={() => handleNavClick("/blog/post")}
                 className={currentPage === "post" ? styles.currentPage : ""}
               >
                 <MdArticle className={styles.navIcon} />
@@ -177,7 +193,7 @@ const BlogLayout = () => {
               </li>
 
               <li
-                onClick={() => navigate("/blog/account")}
+                onClick={() => handleNavClick("/blog/account")}
                 className={currentPage === "account" ? styles.currentPage : ""}
               >
                 <MdPerson className={styles.navIcon} />
@@ -185,7 +201,7 @@ const BlogLayout = () => {
               </li>
 
               <li
-                onClick={() => navigate("/blog/account/edit")}
+                onClick={() => handleNavClick("/blog/account/edit")}
                 className={
                   currentPage === "edit-account" ? styles.currentPage : ""
                 }
@@ -196,7 +212,10 @@ const BlogLayout = () => {
 
               {/* Triggers Modal */}
               <li
-                onClick={() => setShowLogoutModal(true)}
+                onClick={() => {
+                  handleNavClick();
+                  setShowLogoutModal(true);
+                }}
                 className={styles.logoutItem}
               >
                 <MdLogout className={styles.navIcon} />

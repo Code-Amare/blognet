@@ -10,6 +10,8 @@ import FoodShowCase from "../../assets/food.png";
 import TechShowCase from "../../assets/tech.png";
 import EduShowCase from "../../assets/edu.png";
 
+const ANIM_SPEED_MS = 400;
+
 // Reordered array so Food (#FF5252) is at index 0
 const STATES = [
   { visualSrc: FoodVisual, showCaseSrc: FoodShowCase, color: "#FF5252" },
@@ -17,7 +19,7 @@ const STATES = [
   { visualSrc: EduVisual, showCaseSrc: EduShowCase, color: "#22C55E" },
 ];
 
-const Home = ({ interval = 8000 }) => {
+const Home = ({ interval = 4000 }) => {
   // Starts on index 0 (Red / Food Theme)
   const [index, setIndex] = useState(0);
   const [animState, setAnimState] = useState("enter");
@@ -37,12 +39,12 @@ const Home = ({ interval = 8000 }) => {
       // Step 1: Slide current card down out of view
       setAnimState("exit");
 
-      // Step 2: Swap state while off-screen (500ms duration)
+      // Step 2: Swap state while off-screen using the dynamic ANIM_SPEED_MS
       setTimeout(() => {
         setIndex((prev) => (prev + 1) % STATES.length);
         // Step 3: Slide new card up into view
         setAnimState("enter");
-      }, 500);
+      }, ANIM_SPEED_MS);
     }, interval);
 
     return () => clearInterval(timer);
@@ -55,6 +57,7 @@ const Home = ({ interval = 8000 }) => {
       className={styles.pageWrapper}
       style={{
         "--accent-color": current.color,
+        "--anim-speed": `${ANIM_SPEED_MS}ms`, // Pass speed directly to CSS
       }}
     >
       <HomeNav bgColor={current.color} />
