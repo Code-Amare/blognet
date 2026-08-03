@@ -122,7 +122,17 @@ class CommentView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class PostDetailView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request, post_id):
+        user = request.user
+        post = BlogPost.objects.filter(id=post_id).first()
+        if not post:
+            return Response({"error": "Post not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PostSerializer(post, user=user)
+        return Response({"post": serializer.data}, status=status.HTTP_200_OK)
 
 
 class BlogCategoryListView(APIView):

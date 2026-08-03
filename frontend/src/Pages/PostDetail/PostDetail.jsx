@@ -21,10 +21,8 @@ import {
 import UserContext from "../../context/UserContext";
 import styles from "./PostDetail.module.css";
 
-const PostDetail = ({
-  postDetailUrl = "http://127.0.0.1:8000/blog/posts/",
-}) => {
-  const { id } = useParams();
+const PostDetail = ({ postDetailUrl = "http://127.0.0.1:8000/blog/post/" }) => {
+  const { postId } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(UserContext);
 
@@ -43,12 +41,24 @@ const PostDetail = ({
 
   const socketRef = useRef(null);
 
-  // 1. Fetch Post Detail
+  // Helper to format local asset paths safely without placeholder domains
+  // Updated helper to attach the base URL to relative media paths
+  const getAssetUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    // Prepends base domain to relative paths like /media/...
+    const baseUrl = "http://127.0.0.1:8000";
+    return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+  };
+
+  // 1. Fetch Post Detail & Sync State
   useEffect(() => {
     const fetchPostDetail = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${postDetailUrl}${id}/`, {
+        const response = await axios.get(`${postDetailUrl}${postId}/`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("access")}`,
           },
@@ -56,49 +66,58 @@ const PostDetail = ({
         const data = response.data;
         console.log(data);
 
-        setPost(data);
-        setLikeCount(data.like ?? 0);
-        setComments(data.comments || []);
+        // Extract nested `post` payload returned by API console response
+        const postData = data?.post || data;
+
+        setPost(postData);
+        setLikeCount(postData?.like ?? 0);
+        setIsLiked(Boolean(postData?.is_liked_by_me));
+        setComments(postData?.comments || data?.comments || []);
       } catch (err) {
-        console.error("Error fetching post detail:", err.response);
+        console.error("Error fetching post detail:", err?.response || err);
         setError("Failed to load article. It may have been removed.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (id) fetchPostDetail();
-  }, [id, postDetailUrl]);
+    if (postId) fetchPostDetail();
+  }, [postId, postDetailUrl]);
 
-  // 2. WebSocket for real-time like sync
+  // 2. Real-time WebSocket Like Sync
   const onMessage = useCallback(
     (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (
-          data.post_id === Number(id) &&
-          typeof data.like_count === "number"
-        ) {
-          setLikeCount(data.like_count);
+        if (data.post_id === Number(postId)) {
+          if (typeof data.like_count === "number") {
+            setLikeCount(data.like_count);
+          }
+          if (
+            data.username === user?.username &&
+            typeof data.is_liked_by_me === "boolean"
+          ) {
+            setIsLiked(data.is_liked_by_me);
+          }
         }
       } catch (err) {
         console.error("Failed to parse WebSocket message:", err);
       }
     },
-    [id],
+    [postId, user?.username],
   );
 
   useEffect(() => {
-    if (!id) return;
+    if (!postId) return;
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const host = window.location.hostname;
-    const socketUrl = `${protocol}://${host}:8000/ws/like/`;
+    const host = window.location.host;
+    const socketUrl = `${protocol}://${host}/ws/like/`;
 
     const socket = new WebSocket(socketUrl);
     socketRef.current = socket;
 
-    socket.onopen = () => console.log(`✅ Connected to PostDetail #${id}`);
+    socket.onopen = () => console.log(`Connected to PostDetail #${postId}`);
     socket.onmessage = onMessage;
 
     return () => {
@@ -109,7 +128,7 @@ const PostDetail = ({
         socket.close();
       }
     };
-  }, [id, onMessage]);
+  }, [postId, onMessage]);
 
   // Helpers
   const formatLikes = (count) =>
@@ -124,24 +143,17 @@ const PostDetail = ({
     }
   };
 
-  const getAvatarUrl = (avatarPath) => {
-    if (!avatarPath) return "https://via.placeholder.com/150";
-    if (avatarPath.includes("http://") || avatarPath.includes("https://")) {
-      return avatarPath;
-    }
-    return `http://127.0.0.1:8000${avatarPath}`;
-  };
-
   // Actions
   const handleLikePost = () => {
-    setIsLiked((prev) => !prev);
-    setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
+    const nextIsLiked = !isLiked;
+    setIsLiked(nextIsLiked);
+    setLikeCount((prev) => (nextIsLiked ? prev + 1 : Math.max(0, prev - 1)));
 
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({
           message: {
-            post_id: Number(id),
+            post_id: Number(postId),
             username: user?.username || "anonymous",
           },
         }),
@@ -156,7 +168,7 @@ const PostDetail = ({
     setIsSubmittingComment(true);
     try {
       const res = await axios.post(
-        `${postDetailUrl}${id}/comments/`,
+        `${postDetailUrl}${postId}/comments/`,
         { text: newComment },
         {
           headers: {
@@ -194,12 +206,12 @@ const PostDetail = ({
     );
   }
 
-  const avatar = getAvatarUrl(post?.profile?.avatar);
-  const coverImage = post?.post_img ? getAvatarUrl(post.post_img) : null;
+  const avatar = getAssetUrl(post?.profile?.avatar);
+  const coverImage = getAssetUrl(post?.post_img);
 
   return (
     <article className={styles.detailContainer}>
-      {/* Navigation Header */}
+      {/* Navigation Bar */}
       <nav className={styles.navHeader}>
         <button
           type="button"
@@ -234,27 +246,33 @@ const PostDetail = ({
         </div>
       </nav>
 
-      {/* Article Title Header */}
+      {/* Article Header */}
       <header className={styles.articleHeader}>
-        {post.category && (
-          <span className={styles.categoryBadge}>{post.category}</span>
+        {post?.post_category && (
+          <span className={styles.categoryBadge}>{post.post_category}</span>
         )}
         <h1
           className={styles.title}
-          style={post.post_title_color ? { color: post.post_title_color } : {}}
+          style={post?.post_title_color ? { color: post.post_title_color } : {}}
         >
-          {post.post_title}
+          {post?.post_title}
         </h1>
 
         <div className={styles.authorBar}>
           <div className={styles.authorMeta}>
-            <img src={avatar} alt="Author avatar" className={styles.avatar} />
+            {avatar && (
+              <img
+                src={avatar}
+                alt={`${post?.profile?.display_name || "Author"} avatar`}
+                className={styles.avatar}
+              />
+            )}
             <div>
               <h3 className={styles.authorName}>
-                {post?.profile?.display_name || post?.user || "Anonymous"}
+                {post?.profile?.display_name || "Anonymous"}
               </h3>
               <span className={styles.timestamp}>
-                {getReadableTime(post.timestamp)}
+                {getReadableTime(post?.timestamp)}
               </span>
             </div>
           </div>
@@ -263,6 +281,7 @@ const PostDetail = ({
             type="button"
             className={`${styles.likeBtn} ${isLiked ? styles.liked : ""}`}
             onClick={handleLikePost}
+            aria-label="Like post"
           >
             {isLiked ? <FaHeart /> : <FaRegHeart />}
             <span>{formatLikes(likeCount)}</span>
@@ -273,13 +292,13 @@ const PostDetail = ({
       {/* Cover Image */}
       {coverImage && (
         <div className={styles.coverFrame}>
-          <img src={coverImage} alt={post.post_title} />
+          <img src={coverImage} alt={post?.post_title || "Post image"} />
         </div>
       )}
 
       {/* Article Body */}
       <section className={styles.articleBody}>
-        {post.post_body
+        {post?.post_body
           ?.split("\n")
           .map((paragraph, idx) =>
             paragraph.trim() ? <p key={idx}>{paragraph}</p> : <br key={idx} />,
@@ -294,7 +313,6 @@ const PostDetail = ({
           <FaComment /> Comments ({comments.length})
         </h2>
 
-        {/* New Comment Input */}
         <form className={styles.commentForm} onSubmit={handleAddComment}>
           <textarea
             placeholder="Share your thoughts..."
@@ -311,7 +329,6 @@ const PostDetail = ({
           </button>
         </form>
 
-        {/* Comment List */}
         <div className={styles.commentList}>
           {comments.length === 0 ? (
             <p className={styles.noComments}>
@@ -320,11 +337,13 @@ const PostDetail = ({
           ) : (
             comments.map((comment, idx) => (
               <div key={comment.id || idx} className={styles.commentItem}>
-                <img
-                  src={getAvatarUrl(comment.profile?.avatar)}
-                  alt="Commenter avatar"
-                  className={styles.commentAvatar}
-                />
+                {comment.profile?.avatar && (
+                  <img
+                    src={getAssetUrl(comment.profile.avatar)}
+                    alt="Commenter avatar"
+                    className={styles.commentAvatar}
+                  />
+                )}
                 <div className={styles.commentContent}>
                   <div className={styles.commentMeta}>
                     <span className={styles.commentAuthor}>
