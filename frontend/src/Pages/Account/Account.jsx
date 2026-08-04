@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import numeral from "numeral";
 import {
@@ -12,24 +11,53 @@ import {
   FaUserEdit,
 } from "react-icons/fa";
 import UserContext from "../../context/UserContext";
+import { useAxios } from "../../hooks/useAxios";
 import styles from "./Account.module.css";
 
-const Account = ({ profileApiUrl = "http://127.0.0.1:8000/api/profile/" }) => {
+const Account = ({ profileApiUrl = "/profile/" }) => {
   const { username } = useParams();
   const navigate = useNavigate();
   const { user: currentUser } = useContext(UserContext);
 
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const targetUsername = username || currentUser?.username;
+
+  const {
+    response: profileData,
+    loading,
+    error: fetchError,
+  } = useAxios({
+    method: "GET",
+    url: targetUsername ? `${profileApiUrl}${targetUsername}/` : null,
+    isProtected: true,
+    run: !!targetUsername,
+  });
+
+  useEffect(() => {
+    if (profileData) {
+      setProfile(profileData);
+      setError(null);
+    }
+  }, [profileData]);
+
+  useEffect(() => {
+    if (fetchError) {
+      console.error("Error fetching profile:", fetchError);
+      setError("Failed to load user profile.");
+    }
+  }, [fetchError]);
 
   const getAssetUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    const baseUrl = "http://127.0.0.1:8000";
-    return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+    const mediaBase = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8001";
+    return path.startsWith("/")
+      ? `${mediaBase}${path}`
+      : `${mediaBase}/${path}`;
   };
 
   const getReadableTime = (timestamp) => {
@@ -43,37 +71,6 @@ const Account = ({ profileApiUrl = "http://127.0.0.1:8000/api/profile/" }) => {
 
   const formatCount = (count) =>
     numeral(count).format(count < 1000 ? "0a" : "0.0a");
-
-  useEffect(() => {
-    const fetchProfile = async () => {
-      setLoading(true);
-      const targetUsername = username || currentUser?.username;
-
-      if (!targetUsername) {
-        setError("No user specified.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const token = localStorage.getItem("access");
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
-        const response = await axios.get(`${profileApiUrl}${targetUsername}/`, {
-          headers,
-        });
-
-        setProfile(response.data);
-      } catch (err) {
-        console.error("Error fetching profile:", err?.response || err);
-        setError("Failed to load user profile.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [username, currentUser, profileApiUrl]);
 
   if (loading) {
     return (

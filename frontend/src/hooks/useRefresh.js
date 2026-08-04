@@ -1,4 +1,3 @@
-// hooks/useRefresh.js
 import { useCallback } from "react";
 import axios from "axios";
 

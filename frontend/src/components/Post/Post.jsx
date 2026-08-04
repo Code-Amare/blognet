@@ -8,21 +8,24 @@ import React, {
 import { FaHeart, FaRegHeart, FaArrowRight } from "react-icons/fa";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import numeral from "numeral";
-import UserContext from "../../context/UserContext";
-import styles from "./Post.module.css";
 import { Link } from "react-router-dom";
 
-const MAX_BODY_LENGTH = 120; // Maximum characters before truncation
+import UserContext from "../../context/UserContext";
+import styles from "./Post.module.css";
+
+const MAX_BODY_LENGTH = 120;
+
+const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
+const WS_URL = import.meta.env.VITE_WS_URL;
 
 const Post = ({ post }) => {
   const { user } = useContext(UserContext);
 
-  // Initialize states with API response values
   const [likeCount, setLikeCount] = useState(post?.like ?? 0);
   const [isLiked, setIsLiked] = useState(Boolean(post?.is_liked_by_me));
+
   const socketRef = useRef(null);
 
-  // Keep local states synchronized if parent props update
   useEffect(() => {
     setLikeCount(post?.like ?? 0);
     setIsLiked(Boolean(post?.is_liked_by_me));
@@ -34,94 +37,109 @@ const Post = ({ post }) => {
 
   const getReadableTime = (timestamp) => {
     if (!timestamp) return "";
+
     try {
-      return formatDistanceToNow(parseISO(timestamp), { addSuffix: true });
+      return formatDistanceToNow(parseISO(timestamp), {
+        addSuffix: true,
+      });
     } catch {
       return "";
     }
   };
 
   const getAvatarUrl = (avatarPath) => {
-    if (!avatarPath) return null; // Return null instead of placeholder URL
-    if (avatarPath.includes("http://") || avatarPath.includes("https://")) {
+    if (!avatarPath) return null;
+
+    // Cloudinary or any absolute URL
+    if (/^https?:\/\//.test(avatarPath)) {
       return avatarPath;
     }
-    return `http://127.0.0.1:8000${avatarPath}`;
+
+    // Relative URL from Django
+    return `${MEDIA_URL}${avatarPath}`;
   };
 
-  // Truncate post body with ellipsis
   const truncateText = (text, maxLength) => {
     if (!text) return "";
     if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength).trim() + "...";
+    return `${text.slice(0, maxLength).trim()}...`;
   };
 
   const avatar = getAvatarUrl(post?.profile?.avatar);
   const readableTime = getReadableTime(post?.timestamp);
   const truncatedBody = truncateText(post?.post_body, MAX_BODY_LENGTH);
 
-  // Extract initial letter for avatar fallback
-  const authorDisplayName = post?.profile?.display_name || post?.user || "A";
+  const authorDisplayName =
+    post?.profile?.display_name || post?.user || "Anonymous";
+
   const initialLetter = authorDisplayName.charAt(0).toUpperCase();
 
   const onMessage = useCallback(
     (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.post_id === post?.id) {
-          if (typeof data.like_count === "number") {
-            setLikeCount(data.like_count);
-          }
-          // Update isLiked if WebSocket sends user-specific like state back
-          if (
-            data.username === user?.username &&
-            typeof data.is_liked_by_me === "boolean"
-          ) {
-            setIsLiked(data.is_liked_by_me);
-          }
+
+        if (data.post_id !== post?.id) return;
+
+        if (typeof data.like_count === "number") {
+          setLikeCount(data.like_count);
+        }
+
+        if (
+          data.username === user?.username &&
+          typeof data.is_liked_by_me === "boolean"
+        ) {
+          setIsLiked(data.is_liked_by_me);
         }
       } catch (err) {
-        console.error("Failed to parse WebSocket message:", err);
+        console.error("WebSocket message error:", err);
       }
     },
-    [post?.id, user?.username]
+    [post?.id, user?.username],
   );
 
   useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const host = window.location.hostname;
-    const socketUrl = `${protocol}://${host}:8000/ws/like/`;
+    // Skip websocket if URL isn't configured
+    if (!WS_URL) return;
 
-    const socket = new WebSocket(socketUrl);
+    const socket = new WebSocket(`${WS_URL}/like/`);
+
     socketRef.current = socket;
 
-    socket.onopen = () => console.log(`✅ Connected: Post #${post?.id}`);
+    socket.onopen = () => {
+      console.log(`Connected to like socket for post ${post?.id}`);
+    };
+
     socket.onmessage = onMessage;
 
+    socket.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+
+    socket.onclose = () => {
+      console.log("Like socket closed.");
+    };
+
     return () => {
-      if (
-        socket.readyState === WebSocket.OPEN ||
-        socket.readyState === WebSocket.CONNECTING
-      ) {
-        socket.close();
-      }
+      socket.close();
     };
   }, [onMessage, post?.id]);
 
   const handleLikePost = (id) => {
-    // Optimistic UI update
     const nextIsLiked = !isLiked;
-    setIsLiked(nextIsLiked);
-    setLikeCount((prev) => (nextIsLiked ? prev + 1 : Math.max(0, prev - 1)));
 
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+    // Optimistic update
+    setIsLiked(nextIsLiked);
+    setLikeCount((prev) => (nextIsLiked ? prev + 1 : Math.max(prev - 1, 0)));
+
+    if (socketRef.current?.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({
           message: {
             post_id: id,
             username: user?.username || "anonymous",
           },
-        })
+        }),
       );
     }
   };
@@ -141,8 +159,10 @@ const Post = ({ post }) => {
               <div className={styles.avatarFallback}>{initialLetter}</div>
             )}
           </div>
+
           <div className={styles.authorMeta}>
             <h1 className={styles.authorName}>{authorDisplayName}</h1>
+
             <span className={styles.timestamp}>{readableTime}</span>
           </div>
         </div>
@@ -158,12 +178,14 @@ const Post = ({ post }) => {
           ) : (
             <FaRegHeart className={styles.heartIcon} />
           )}
+
           <span>{formatLikes(likeCount)}</span>
         </button>
       </header>
 
       <div className={styles.body}>
         <h2 className={styles.title}>{post?.post_title}</h2>
+
         <p className={styles.description}>{truncatedBody}</p>
       </div>
 

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { FaBars, FaPlus } from "react-icons/fa";
 import {
   MdArticle,
@@ -15,6 +14,10 @@ import Logo from "../../assets/logo.png";
 import useAuth from "../../hooks/useAuth";
 import UserContext from "../../context/UserContext";
 import LogoutModal from "../../components/LogoutModal/LogoutModal";
+import { useAxios } from "../../hooks/useAxios";
+
+// Base API URL from environment variables
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const BlogLayout = () => {
   const navigate = useNavigate();
@@ -26,17 +29,62 @@ const BlogLayout = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
-  // Logout Modal State
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-
   const [avatar, setAvatar] = useState(null);
   const [displayName, setDisplayName] = useState("");
   const [profile, setProfile] = useState({});
 
-  const { isAuthenticated, loading, user } = useAuth(
-    "http://127.0.0.1:8000/api/token/check/",
-    "http://127.0.0.1:8000/api/token/refresh/",
+  // ---- Use relative URLs – the base comes from VITE_API_URL ----
+  const {
+    isAuthenticated,
+    loading: authLoading,
+    user,
+  } = useAuth(
+    "/token/check/", // was absolute
+    "/token/refresh/", // was absolute
   );
+
+  // Fetch profile only when authenticated and auth loading is done
+  const {
+    response: profileData,
+    loading: profileLoading,
+    error: profileError,
+  } = useAxios({
+    method: "GET",
+    url: "/profile/",
+    isProtected: true,
+    run: isAuthenticated && !authLoading,
+  });
+
+  // Update local state when profile data arrives
+  useEffect(() => {
+    if (profileData) {
+      setAvatar(profileData.avatar);
+      setDisplayName(profileData.display_name);
+      setProfile(profileData);
+    }
+  }, [profileData]);
+
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+  // ---- Helper to build full image URLs ----
+  const getAssetUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    // Use the same base as the hook (or fallback)
+    const base = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8000";
+    const newPath = path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
+
+    return newPath;
+  };
 
   let currentPage = "blog";
   if (path.includes("/post")) currentPage = "post";
@@ -44,33 +92,6 @@ const BlogLayout = () => {
   else if (path.includes("/account/edit")) currentPage = "edit-account";
   else if (path.includes("/account")) currentPage = "account";
 
-  useEffect(() => {
-    if (loading) return;
-
-    if (!isAuthenticated) {
-      navigate("/login");
-      return;
-    }
-
-    const fetchAvatar = async () => {
-      try {
-        const res = await axios.get("http://127.0.0.1:8000/api/profile/", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access")}`,
-          },
-        });
-        setAvatar(res.data.avatar);
-        setDisplayName(res.data.display_name);
-        setProfile(res.data);
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      }
-    };
-
-    fetchAvatar();
-  }, [loading, isAuthenticated, navigate]);
-
-  // Toggle sidebar and persist in localStorage
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
       const nextState = !prev;
@@ -79,7 +100,6 @@ const BlogLayout = () => {
     });
   };
 
-  // Helper function to auto-close navigation on mobile screens
   const handleNavClick = (route) => {
     if (window.innerWidth <= 768) {
       setIsSidebarOpen(false);
@@ -95,7 +115,7 @@ const BlogLayout = () => {
     navigate("/logout");
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>
@@ -103,6 +123,8 @@ const BlogLayout = () => {
       </div>
     );
   }
+
+  const avatarUrl = getAssetUrl(avatar);
 
   return (
     <div className={styles.blogLayoutContainer}>
@@ -130,13 +152,9 @@ const BlogLayout = () => {
             {displayName || user?.username || "Account"}
           </span>
           <div className={styles.avatarWrapper}>
-            {avatar ? (
+            {avatarUrl ? (
               <img
-                src={
-                  avatar.startsWith("http")
-                    ? avatar
-                    : `http://127.0.0.1:8000${avatar}`
-                }
+                src={avatarUrl}
                 alt="User Avatar"
                 className={styles.avatarImg}
               />
@@ -151,7 +169,6 @@ const BlogLayout = () => {
 
       {/* Main Container */}
       <div className={styles.mainWrapper}>
-        {/* Mobile Backdrop - Clicking closes sidebar */}
         {isSidebarOpen && (
           <div
             className={styles.mobileBackdrop}
@@ -210,7 +227,6 @@ const BlogLayout = () => {
                 <span>Edit Account</span>
               </li>
 
-              {/* Triggers Modal */}
               <li
                 onClick={() => {
                   handleNavClick();
@@ -232,7 +248,6 @@ const BlogLayout = () => {
         </main>
       </div>
 
-      {/* Confirmation Modal */}
       <LogoutModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}

@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
   MdImage,
@@ -9,6 +8,7 @@ import {
   MdPalette,
   MdCategory,
 } from "react-icons/md";
+import { useAxios } from "../../hooks/useAxios"; // adjust import
 import styles from "./AddPost.module.css";
 import defaultImg from "../../assets/defaultImg.png";
 
@@ -22,8 +22,8 @@ const ACCENT_COLORS = [
 ];
 
 const AddPost = ({
-  addPostUrl = "http://127.0.0.1:8000/blog/add-post/",
-  categoriesUrl = "http://127.0.0.1:8000/blog/categories/",
+  addPostUrl = "/blog/add-post/", // relative – hook prepends base
+  categoriesUrl = "/blog/categories/", // relative
   initialCategories = [],
 }) => {
   const postImgRef = useRef();
@@ -39,10 +39,67 @@ const AddPost = ({
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Helpers to safely extract value and label
+  // ---- 1. Fetch categories ----
+  const {
+    response: categoriesResponse,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useAxios({
+    method: "GET",
+    url: categoriesUrl,
+    isProtected: true,
+    run: true,
+  });
+
+  // ---- 2. Submit post ----
+  const [submitPayload, setSubmitPayload] = useState(null);
+  const {
+    response: submitResponse,
+    loading: submitLoading,
+    error: submitError,
+  } = useAxios({
+    method: "POST",
+    url: addPostUrl,
+    data: submitPayload,
+    isProtected: true,
+    run: submitPayload !== null,
+  });
+
+  // ---- Handle categories response ----
+  useEffect(() => {
+    if (categoriesResponse) {
+      let fetchedData = categoriesResponse;
+      if (Array.isArray(fetchedData) && fetchedData.length > 0) {
+        setCategories(fetchedData);
+        const initialVal = getCatValue(fetchedData[0]);
+        setCategory(initialVal);
+      }
+    }
+    if (categoriesError) {
+      console.error("Error loading categories:", categoriesError);
+    }
+  }, [categoriesResponse, categoriesError]);
+
+  // ---- Handle submit response ----
+  useEffect(() => {
+    if (submitResponse) {
+      navigate("/blog/post");
+      setSubmitPayload(null);
+    }
+  }, [submitResponse, navigate]);
+
+  // ---- Handle submit error ----
+  useEffect(() => {
+    if (submitError) {
+      console.error("Error creating post:", submitError);
+      setErrorMsg("Failed to create post. Please try again.");
+      setSubmitPayload(null);
+    }
+  }, [submitError]);
+
+  // ---- Helpers for category value/label ----
   const getCatValue = (item) => {
     if (!item) return "";
     if (typeof item === "object") {
@@ -59,41 +116,13 @@ const AddPost = ({
     return String(item);
   };
 
-  // 1. Single Fetch on Mount (Prevents re-fetch loops if parent passes empty array reference)
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        let fetchedData = initialCategories;
+  const getSelectedCategoryLabel = () => {
+    if (!category) return "Uncategorized";
+    const found = categories.find((c) => getCatValue(c) === category);
+    return found ? getCatLabel(found) : category;
+  };
 
-        if (!fetchedData || fetchedData.length === 0) {
-          const res = await axios.get(categoriesUrl, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("access")}`,
-            },
-          });
-          fetchedData = res.data || [];
-        }
-
-        if (Array.isArray(fetchedData) && fetchedData.length > 0) {
-          setCategories(fetchedData);
-          const initialVal = getCatValue(fetchedData[0]);
-          setCategory(initialVal);
-        }
-      } catch (err) {
-        console.error("Error loading categories:", err);
-      }
-    };
-
-    fetchCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run ONCE on mount
-
-  // 2. Log state changes to confirm React state updates
-  useEffect(() => {
-    console.log("👉 Current Selected Category State:", category);
-  }, [category]);
-
-  // Object URL preview lifecycle
+  // ---- Object URL preview lifecycle ----
   useEffect(() => {
     if (!file) {
       setPreviewUrl(null);
@@ -104,7 +133,7 @@ const AddPost = ({
     return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
-  // Handle Category Click with console debug
+  // ---- Event handlers ----
   const handleCategoryClick = (val) => {
     setCategory(String(val));
   };
@@ -129,7 +158,6 @@ const AddPost = ({
     }
 
     setErrorMsg("");
-    setIsSubmitting(true);
 
     const formData = new FormData();
     formData.append("post_title", postTitle);
@@ -138,28 +166,11 @@ const AddPost = ({
     formData.append("post_title_color", color);
     formData.append("post_category", category);
 
-    try {
-      await axios.post(addPostUrl, formData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access")}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      navigate("/blog/post");
-    } catch (err) {
-      console.error("Error creating post:", err);
-      setErrorMsg("Failed to create post. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Trigger the POST request
+    setSubmitPayload(formData);
   };
 
-  const getSelectedCategoryLabel = () => {
-    if (!category) return "Uncategorized";
-    const found = categories.find((c) => getCatValue(c) === category);
-    return found ? getCatLabel(found) : category;
-  };
-
+  // ---- Render ----
   return (
     <div className={styles.editorContainer}>
       <header className={styles.editorHeader}>
@@ -195,9 +206,9 @@ const AddPost = ({
             type="button"
             className={styles.submitBtn}
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={submitLoading}
           >
-            {isSubmitting ? "Publishing..." : "Publish Post"}
+            {submitLoading ? "Publishing..." : "Publish Post"}
           </button>
         </div>
       </header>
@@ -265,34 +276,37 @@ const AddPost = ({
                   <MdCategory /> Category
                 </label>
                 <div className={styles.categoryPills}>
-                  {categories.map((catItem, idx) => {
-                    const catVal = getCatValue(catItem);
-                    const catLabel = getCatLabel(catItem);
-                    const isSelected = category === catVal;
+                  {categoriesLoading ? (
+                    <span>Loading categories...</span>
+                  ) : (
+                    categories.map((catItem, idx) => {
+                      const catVal = getCatValue(catItem);
+                      const catLabel = getCatLabel(catItem);
+                      const isSelected = category === catVal;
 
-                    return (
-                      <button
-                        key={catVal || idx}
-                        type="button"
-                        className={`${styles.pill} ${
-                          isSelected ? styles.activePill : ""
-                        }`}
-                        // Fallback inline style test to bypass CSS class issues:
-                        style={{
-                          backgroundColor: isSelected ? "#2563EB" : "#ffffff",
-                          color: isSelected ? "#ffffff" : "#333333",
-                          border: isSelected
-                            ? "1px solid #2563EB"
-                            : "1px solid #ccc",
-                          cursor: "pointer",
-                          pointerEvents: "auto",
-                        }}
-                        onClick={() => handleCategoryClick(catVal)}
-                      >
-                        {catLabel}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={catVal || idx}
+                          type="button"
+                          className={`${styles.pill} ${
+                            isSelected ? styles.activePill : ""
+                          }`}
+                          style={{
+                            backgroundColor: isSelected ? "#2563EB" : "#ffffff",
+                            color: isSelected ? "#ffffff" : "#333333",
+                            border: isSelected
+                              ? "1px solid #2563EB"
+                              : "1px solid #ccc",
+                            cursor: "pointer",
+                            pointerEvents: "auto",
+                          }}
+                          onClick={() => handleCategoryClick(catVal)}
+                        >
+                          {catLabel}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 

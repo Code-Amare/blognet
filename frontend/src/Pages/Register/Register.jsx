@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Register.module.css";
-import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
 import HomeNav from "../../components/HomeNav/HomeNav";
+import { useAxios } from "../../hooks/useAxios"; // adjust path
 
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
 
-// Theme configuration: starts with Red (#FF5252)
+// Theme configuration
 const STATES = [
   { visualSrc: FoodVisual, color: "#FF5252" },
   { visualSrc: TechVisual, color: "#407BFF" },
@@ -28,7 +28,35 @@ const Register = ({ interval = 8000 }) => {
 
   const navigate = useNavigate();
 
-  // Preload visual assets to prevent display flickers
+  // ---- 1. Standard registration trigger ----
+  const [registerData, setRegisterData] = useState(null);
+  const {
+    response: registerResponse,
+    loading: registerLoading,
+    error: registerError,
+  } = useAxios({
+    method: "POST",
+    url: "/register/",
+    data: registerData,
+    run: registerData !== null,
+    isProtected: false,
+  });
+
+  // ---- 2. Google registration trigger ----
+  const [googleTokenData, setGoogleTokenData] = useState(null);
+  const {
+    response: googleResponse,
+    loading: googleLoading,
+    error: googleError,
+  } = useAxios({
+    method: "POST",
+    url: "/google/register/",
+    data: googleTokenData,
+    run: googleTokenData !== null,
+    isProtected: false,
+  });
+
+  // ---- Preload visuals & theme rotation (unchanged) ----
   useEffect(() => {
     STATES.forEach((state) => {
       const img = new Image();
@@ -36,48 +64,35 @@ const Register = ({ interval = 8000 }) => {
     });
   }, []);
 
-  // Theme auto-rotation timer
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % STATES.length);
     }, interval);
-
     return () => clearInterval(timer);
   }, [interval]);
 
   const current = STATES[index];
 
-  // Helper to persist tokens & redirect
+  // ---- Helper: persist tokens & redirect ----
   const handleAuthSuccess = (data) => {
-    if (data.access) {
-      localStorage.setItem("access", data.access);
-    }
-    if (data.refresh) {
-      localStorage.setItem("refresh", data.refresh);
-    }
+    if (data.access) localStorage.setItem("access", data.access);
+    if (data.refresh) localStorage.setItem("refresh", data.refresh);
     navigate("/blog");
   };
 
-  // Standard Registration Handler
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setGeneralError("");
-    setFieldErrors({});
-    setIsSubmitting(true);
-
-    try {
-      await axios.post("http://127.0.0.1:8000/api/register/", {
-        username,
-        email,
-        password,
-      });
-
-      // Navigate to login after successful standard registration
+  // ---- Handle standard registration response ----
+  useEffect(() => {
+    if (registerResponse) {
+      // Registration successful – redirect to login
       navigate("/login");
-    } catch (err) {
-      console.error("Register Error:", err.response);
-      const errorsObj = err.response?.data?.errors;
+      setRegisterData(null);
+      setIsSubmitting(false);
+    }
+  }, [registerResponse, navigate]);
 
+  useEffect(() => {
+    if (registerError) {
+      const errorsObj = registerError.response?.data?.errors;
       if (typeof errorsObj === "string") {
         setGeneralError(errorsObj);
       } else if (typeof errorsObj === "object" && errorsObj !== null) {
@@ -85,41 +100,60 @@ const Register = ({ interval = 8000 }) => {
       } else {
         setGeneralError("Something went wrong. Please try again.");
       }
-    } finally {
+      setRegisterData(null);
       setIsSubmitting(false);
     }
+  }, [registerError]);
+
+  // ---- Handle Google registration response ----
+  useEffect(() => {
+    if (googleResponse) {
+      handleAuthSuccess(googleResponse);
+      setGoogleTokenData(null);
+      setIsGoogleSubmitting(false);
+    }
+  }, [googleResponse]);
+
+  useEffect(() => {
+    if (googleError) {
+      const errorMsg =
+        googleError.response?.data?.errors || googleError.response?.data?.error;
+      if (typeof errorMsg === "string") {
+        setGeneralError(errorMsg);
+      } else {
+        setGeneralError("Google Sign-Up failed. Please try again.");
+      }
+      setGoogleTokenData(null);
+      setIsGoogleSubmitting(false);
+    }
+  }, [googleError]);
+
+  // ---- Standard Registration Handler ----
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setGeneralError("");
+    setFieldErrors({});
+    setIsSubmitting(true);
+
+    if (!username || !email || !password) {
+      setGeneralError("Please fill in all fields.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Trigger the registration request
+    setRegisterData({ username, email, password });
   };
 
-  // Google OAuth Registration Handler
+  // ---- Google OAuth Registration Handler ----
   const handleGoogleRegister = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setGeneralError("");
       setFieldErrors({});
       setIsGoogleSubmitting(true);
 
-      try {
-        const res = await axios.post(
-          "http://127.0.0.1:8000/api/google/register/",
-          {
-            token: tokenResponse.access_token,
-          },
-        );
-
-        // Google registration creates user & authenticates directly
-        handleAuthSuccess(res.data);
-      } catch (err) {
-        console.error("Google Register Error:", err.response);
-        const errorMsg =
-          err.response?.data?.errors || err.response?.data?.error;
-
-        if (typeof errorMsg === "string") {
-          setGeneralError(errorMsg);
-        } else {
-          setGeneralError("Google Sign-Up failed. Please try again.");
-        }
-      } finally {
-        setIsGoogleSubmitting(false);
-      }
+      // Trigger Google registration
+      setGoogleTokenData({ token: tokenResponse.access_token });
     },
     onError: (errorResponse) => {
       console.error("Google Authorization Error:", errorResponse);
@@ -130,9 +164,7 @@ const Register = ({ interval = 8000 }) => {
   return (
     <div
       className={styles.registerContainer}
-      style={{
-        "--accent-color": current.color,
-      }}
+      style={{ "--accent-color": current.color }}
     >
       <HomeNav
         currentPage="signUp"
@@ -146,7 +178,6 @@ const Register = ({ interval = 8000 }) => {
             <h1 className={styles.title}>Create Account</h1>
             <p className={styles.subtitle}>Join BlogNet today</p>
 
-            {/* Top-Level General Error Alert Banner */}
             {generalError && (
               <div className={styles.errorBanner} role="alert">
                 <svg
@@ -164,12 +195,11 @@ const Register = ({ interval = 8000 }) => {
               </div>
             )}
 
-            {/* Google Sign-Up Button */}
             <button
               type="button"
               className={styles.googleBtn}
               onClick={() => handleGoogleRegister()}
-              disabled={isSubmitting || isGoogleSubmitting}
+              disabled={isSubmitting || isGoogleSubmitting || googleLoading}
             >
               <svg className={styles.googleIcon} viewBox="0 0 24 24">
                 <path
@@ -190,13 +220,12 @@ const Register = ({ interval = 8000 }) => {
                 />
               </svg>
               <span>
-                {isGoogleSubmitting
+                {isGoogleSubmitting || googleLoading
                   ? "Connecting to Google..."
                   : "Sign up with Google"}
               </span>
             </button>
 
-            {/* Divider */}
             <div className={styles.divider}>
               <span className={styles.dividerLine}></span>
               <span className={styles.dividerText}>or register with email</span>
@@ -204,7 +233,6 @@ const Register = ({ interval = 8000 }) => {
             </div>
 
             <form onSubmit={handleSubmit} className={styles.form} noValidate>
-              {/* Username Input */}
               <div className={styles.inputGroup}>
                 <label htmlFor="username" className={styles.label}>
                   Username
@@ -227,7 +255,6 @@ const Register = ({ interval = 8000 }) => {
                 )}
               </div>
 
-              {/* Email Input */}
               <div className={styles.inputGroup}>
                 <label htmlFor="email" className={styles.label}>
                   Email Address
@@ -250,7 +277,6 @@ const Register = ({ interval = 8000 }) => {
                 )}
               </div>
 
-              {/* Password Input */}
               <div className={styles.inputGroup}>
                 <label htmlFor="password" className={styles.label}>
                   Password
@@ -280,10 +306,13 @@ const Register = ({ interval = 8000 }) => {
                   !email ||
                   !password ||
                   isSubmitting ||
-                  isGoogleSubmitting
+                  isGoogleSubmitting ||
+                  registerLoading
                 }
               >
-                {isSubmitting ? "Creating Account..." : "Sign Up"}
+                {isSubmitting || registerLoading
+                  ? "Creating Account..."
+                  : "Sign Up"}
               </button>
             </form>
 

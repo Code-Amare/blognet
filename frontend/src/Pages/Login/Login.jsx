@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import styles from "./Login.module.css";
-import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
 import HomeNav from "../../components/HomeNav/HomeNav";
+import { useAxios } from "../../hooks/useAxios"; // adjust path as needed
 
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
@@ -26,7 +26,63 @@ const Login = ({ interval = 8000 }) => {
 
   const navigate = useNavigate();
 
-  // Preload visual assets to prevent display flickers
+  // ---- 1. Email login trigger ----
+  const [emailLoginData, setEmailLoginData] = useState(null);
+
+  const {
+    response: emailResponse,
+    loading: emailLoading,
+    error: emailError,
+  } = useAxios({
+    method: "POST",
+    url: "/login/",
+    data: emailLoginData,
+    run: emailLoginData !== null,
+    isProtected: false,
+  });
+
+  // ---- 2. Google login trigger ----
+  const [googleTokenData, setGoogleTokenData] = useState(null);
+
+  const {
+    response: googleResponse,
+    loading: googleLoading,
+    error: googleError,
+  } = useAxios({
+    method: "POST",
+    url: "/google/login/",
+    data: googleTokenData,
+    run: googleTokenData !== null,
+    isProtected: false,
+  });
+
+  // ---- Handle email login response ----
+  useEffect(() => {
+    if (emailResponse) {
+      handleAuthSuccess(emailResponse);
+      setEmailLoginData(null); // reset to avoid re-fetch
+    }
+    if (emailError) {
+      setGeneralError(getErrorMessage(emailError));
+      setIsSubmitting(false);
+      setEmailLoginData(null);
+    }
+  }, [emailResponse, emailError]);
+
+  // ---- Handle Google login response ----
+  useEffect(() => {
+    if (googleResponse) {
+      handleAuthSuccess(googleResponse);
+      setGoogleTokenData(null);
+    }
+    if (googleError) {
+      setGeneralError(getErrorMessage(googleError));
+      setIsGoogleSubmitting(false);
+      setGoogleTokenData(null);
+    }
+  }, [googleResponse, googleError]);
+
+  // ---- Preload visuals ----
   useEffect(() => {
     STATES.forEach((state) => {
       const img = new Image();
@@ -34,86 +90,57 @@ const Login = ({ interval = 8000 }) => {
     });
   }, []);
 
-  // Theme auto-rotation timer
+  // ---- Theme rotation ----
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % STATES.length);
     }, interval);
-
     return () => clearInterval(timer);
   }, [interval]);
 
   const current = STATES[index];
 
-  // Helper to persist tokens & redirect
+  // ---- Helper: persist tokens & redirect ----
   const handleAuthSuccess = (data) => {
-    if (data.access) {
-      localStorage.setItem("access", data.access);
-    }
-    if (data.refresh) {
-      localStorage.setItem("refresh", data.refresh);
-    }
+    if (data.access) localStorage.setItem("access", data.access);
+    if (data.refresh) localStorage.setItem("refresh", data.refresh);
     navigate("/blog");
   };
 
-  // Standard Email/Password Submission
+  // ---- Helper: extract error message ----
+  const getErrorMessage = (err) => {
+    const errorMsg = err?.response?.data?.errors || err?.response?.data?.error;
+    if (typeof errorMsg === "string") return errorMsg;
+    if (typeof errorMsg === "object" && errorMsg !== null) {
+      return errorMsg.detail || "Invalid credentials";
+    }
+    return "Something went wrong. Please try again.";
+  };
+
+  // ---- Email/Password Submission ----
   const handleSubmit = async (e) => {
     e.preventDefault();
     setGeneralError("");
     setIsSubmitting(true);
 
-    try {
-      const res = await axios.post("http://127.0.0.1:8000/api/login/", {
-        email,
-        password,
-      });
-
-      handleAuthSuccess(res.data);
-    } catch (err) {
-      console.error("Login Error:", err.response);
-
-      const errorMsg = err.response?.data?.errors;
-
-      if (typeof errorMsg === "string") {
-        setGeneralError(errorMsg);
-      } else if (typeof errorMsg === "object" && errorMsg !== null) {
-        setGeneralError(errorMsg.detail || "Invalid credentials");
-      } else {
-        setGeneralError("Something went wrong. Please try again.");
-      }
-    } finally {
+    if (!email || !password) {
+      setGeneralError("Please fill in all fields.");
       setIsSubmitting(false);
+      return;
     }
+
+    // Trigger the email login request
+    setEmailLoginData({ email, password });
   };
 
-  // Google OAuth Handler
+  // ---- Google OAuth Handler ----
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setGeneralError("");
       setIsGoogleSubmitting(true);
 
-      try {
-        const res = await axios.post(
-          "http://127.0.0.1:8000/api/google/login/",
-          {
-            token: tokenResponse.access_token,
-          },
-        );
-
-        handleAuthSuccess(res.data);
-      } catch (err) {
-        console.error("Google Login Error:", err.response);
-        const errorMsg =
-          err.response?.data?.errors || err.response?.data?.error;
-
-        if (typeof errorMsg === "string") {
-          setGeneralError(errorMsg);
-        } else {
-          setGeneralError("Google Sign-In failed. Please try again.");
-        }
-      } finally {
-        setIsGoogleSubmitting(false);
-      }
+      // Trigger the Google login request
+      setGoogleTokenData({ token: tokenResponse.access_token });
     },
     onError: (errorResponse) => {
       console.error("Google Authorization Error:", errorResponse);
@@ -121,6 +148,7 @@ const Login = ({ interval = 8000 }) => {
     },
   });
 
+  // ---- Render ----
   return (
     <div
       className={styles.loginContainer}
@@ -140,7 +168,6 @@ const Login = ({ interval = 8000 }) => {
             <h1 className={styles.title}>Welcome Back</h1>
             <p className={styles.subtitle}>Sign in to continue to BlogNet</p>
 
-            {/* Top-Level General Error Alert Banner */}
             {generalError && (
               <div className={styles.errorBanner} role="alert">
                 <svg
@@ -158,12 +185,11 @@ const Login = ({ interval = 8000 }) => {
               </div>
             )}
 
-            {/* Google Sign-In Button */}
             <button
               type="button"
               className={styles.googleBtn}
               onClick={() => handleGoogleLogin()}
-              disabled={isSubmitting || isGoogleSubmitting}
+              disabled={isSubmitting || isGoogleSubmitting || googleLoading}
             >
               <svg className={styles.googleIcon} viewBox="0 0 24 24">
                 <path
@@ -184,13 +210,12 @@ const Login = ({ interval = 8000 }) => {
                 />
               </svg>
               <span>
-                {isGoogleSubmitting
+                {isGoogleSubmitting || googleLoading
                   ? "Connecting to Google..."
                   : "Continue with Google"}
               </span>
             </button>
 
-            {/* Divider */}
             <div className={styles.divider}>
               <span className={styles.dividerLine}></span>
               <span className={styles.dividerText}>or sign in with email</span>
@@ -235,10 +260,14 @@ const Login = ({ interval = 8000 }) => {
                 type="submit"
                 className={styles.submitBtn}
                 disabled={
-                  !email || !password || isSubmitting || isGoogleSubmitting
+                  !email ||
+                  !password ||
+                  isSubmitting ||
+                  isGoogleSubmitting ||
+                  emailLoading
                 }
               >
-                {isSubmitting ? "Signing in..." : "Sign In"}
+                {isSubmitting || emailLoading ? "Signing in..." : "Sign In"}
               </button>
             </form>
 

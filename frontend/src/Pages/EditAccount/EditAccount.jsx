@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import {
   FaArrowLeft,
   FaCamera,
@@ -11,11 +10,11 @@ import {
   FaIdCard,
 } from "react-icons/fa";
 import UserContext from "../../context/UserContext";
+import { useAxios } from "../../hooks/useAxios"; // adjust import
 import styles from "./EditAccount.module.css";
 
-const EditAccount = ({
-  editApiUrl = "http://127.0.0.1:8000/api/profile/edit/",
-}) => {
+// URL is now relative – the hook prepends the base from VITE_API_URL
+const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
   const navigate = useNavigate();
   const { user: currentUser, setUser } = useContext(UserContext);
 
@@ -29,59 +28,107 @@ const EditAccount = ({
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
-
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
 
+  // ---- 1. Fetch profile data ----
+  const {
+    response: profileData,
+    loading: profileLoading,
+    error: profileError,
+  } = useAxios({
+    method: "GET",
+    url: editApiUrl,
+    isProtected: true,
+    run: true,
+  });
+
+  // ---- 2. Update profile (PATCH) ----
+  const [updatePayload, setUpdatePayload] = useState(null);
+  const {
+    response: updateResponse,
+    loading: updateLoading,
+    error: updateError,
+  } = useAxios({
+    method: "PATCH",
+    url: editApiUrl,
+    data: updatePayload,
+    isProtected: true,
+    run: updatePayload !== null,
+  });
+
+  // ---- Handle fetched profile data ----
+  useEffect(() => {
+    if (profileData) {
+      setFormData({
+        display_name: profileData.display_name || "",
+        first_name: profileData.first_name || "",
+        last_name: profileData.last_name || "",
+        email: profileData.email || "",
+      });
+      if (profileData.avatar) {
+        setAvatarPreview(getAssetUrl(profileData.avatar));
+      }
+    }
+  }, [profileData]);
+
+  // ---- Handle fetch errors ----
+  useEffect(() => {
+    if (profileError) {
+      console.error("Profile fetch error:", profileError);
+      setFeedback({
+        type: "error",
+        message: "Failed to load account settings.",
+      });
+    }
+  }, [profileError]);
+
+  // ---- Handle update response ----
+  useEffect(() => {
+    if (updateResponse) {
+      setFeedback({
+        type: "success",
+        message: "Account updated successfully!",
+      });
+      // Update context if available
+      if (setUser && updateResponse?.profile) {
+        setUser((prev) => ({ ...prev, ...updateResponse.profile }));
+      }
+      // Clear the payload to prevent re-fetch
+      setUpdatePayload(null);
+      // Optionally reload or navigate
+      window.location.reload(); // keep original behaviour
+    }
+  }, [updateResponse, setUser]);
+
+  // ---- Handle update errors ----
+  useEffect(() => {
+    if (updateError) {
+      console.error("Update error:", updateError);
+      setFeedback({
+        type: "error",
+        message:
+          updateError.response?.data?.message || "Failed to update profile.",
+      });
+      setUpdatePayload(null);
+    }
+  }, [updateError]);
+
+  // ---- Helper: build asset URL ----
   const getAssetUrl = (path) => {
+    console.log(path);
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    const baseUrl = "http://127.0.0.1:8000";
-    return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+    // Use the same base as the hook (or fallback)
+    const base = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8000";
+    const newPath = path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
+    console.log(newPath);
+
+    return newPath;
   };
 
-  // Helper to extract first initial
-  const initialLetter = (formData.display_name || currentUser?.username || "?")
-    .charAt(0)
-    .toUpperCase();
-
-  useEffect(() => {
-    const fetchAccountDetails = async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem("access");
-        const res = await axios.get(editApiUrl, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const data = res.data;
-        setFormData({
-          display_name: data.display_name || "",
-          first_name: data.first_name || "",
-          last_name: data.last_name || "",
-          email: data.email || "",
-        });
-
-        if (data.avatar) {
-          setAvatarPreview(getAssetUrl(data.avatar));
-        }
-      } catch (err) {
-        console.error(err.response);
-        setFeedback({
-          type: "error",
-          message: "Failed to load account settings.",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAccountDetails();
-  }, [editApiUrl]);
-
+  // ---- Form handlers ----
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -104,55 +151,33 @@ const EditAccount = ({
     setRemoveAvatar(true);
   };
 
+  const initialLetter = (formData.display_name || currentUser?.username || "?")
+    .charAt(0)
+    .toUpperCase();
+
+  // ---- Submit handler ----
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
     setFeedback({ type: "", message: "" });
 
-    try {
-      const token = localStorage.getItem("access");
-      const submitData = new FormData();
+    const submitData = new FormData();
+    submitData.append("display_name", formData.display_name);
+    submitData.append("first_name", formData.first_name);
+    submitData.append("last_name", formData.last_name);
+    submitData.append("email", formData.email);
 
-      submitData.append("display_name", formData.display_name);
-      submitData.append("first_name", formData.first_name);
-      submitData.append("last_name", formData.last_name);
-      submitData.append("email", formData.email);
-
-      if (avatarFile) {
-        submitData.append("avatar", avatarFile);
-      } else if (removeAvatar) {
-        submitData.append("remove_avatar", "true");
-      }
-
-      const res = await axios.patch(editApiUrl, submitData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      window.location.reload();
-
-      setFeedback({
-        type: "success",
-        message: "Account updated successfully!",
-      });
-
-      if (setUser && res.data?.profile) {
-        setUser((prev) => ({ ...prev, ...res.data.profile }));
-      }
-    } catch (err) {
-      console.error("Error updating profile:", err);
-      setFeedback({
-        type: "error",
-        message: err.response?.data?.message || "Failed to update profile.",
-      });
-    } finally {
-      setSaving(false);
+    if (avatarFile) {
+      submitData.append("avatar", avatarFile);
+    } else if (removeAvatar) {
+      submitData.append("remove_avatar", "true");
     }
+
+    // Trigger the PATCH request
+    setUpdatePayload(submitData);
   };
 
-  if (loading) {
+  // ---- Render ----
+  if (profileLoading) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>
@@ -303,8 +328,12 @@ const EditAccount = ({
           >
             Cancel
           </button>
-          <button type="submit" disabled={saving} className={styles.saveBtn}>
-            <FaSave /> {saving ? "Saving..." : "Save Changes"}
+          <button
+            type="submit"
+            disabled={updateLoading}
+            className={styles.saveBtn}
+          >
+            <FaSave /> {updateLoading ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </form>

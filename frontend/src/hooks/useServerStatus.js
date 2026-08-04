@@ -1,43 +1,17 @@
-import axios from 'axios';
-import { useState, useEffect, useRef } from 'react';
+import { useAxios } from "./useAxios";
 
-export const useServerStatus = (url = 'http://127.0.0.1:8000/api/health/', intervalMs = 10000) => {
-    const [isUp, setIsUp] = useState(null);
-    const [count, setCount] = useState(0);
-    const timerRef = useRef(null);
-    const isMounted = useRef(true);
-    const isUpRef = useRef(isUp); // 👈 holds latest value
+export const useServerStatus = (
+  url = "/health/",
+  intervalMs = 10000
+) => {
+  const { response, error, loading } = useAxios({
+    method: "GET",
+    url,
+    run: true,
+    isProtected: false,
+    pollInterval: intervalMs,
+  });
 
-    // Update ref whenever isUp changes
-    useEffect(() => {
-        isUpRef.current = isUp;
-    }, [isUp]);
-
-    useEffect(() => {
-        isMounted.current = true;
-
-        const check = async () => {
-            try {
-                const res = await axios.get(url, { timeout: 3000 });
-                if (isMounted.current) {
-                    const up = res.data.status === "ok";
-                    setIsUp(up);
-                }
-            } catch {
-                if (isMounted.current) {
-                    setIsUp(false);
-                }
-            }
-        };
-
-        check();
-        timerRef.current = setInterval(check, intervalMs);
-
-        return () => {
-            clearInterval(timerRef.current);
-            isMounted.current = false;
-        };
-    }, [url, intervalMs]);
-
-    return isUp;
+  if (loading || (!response && !error)) return null;
+  return response?.status === "ok";
 };
