@@ -147,6 +147,30 @@ class PostDetailView(APIView):
         serializer = PostSerializer(post, user=user)
         return Response({"post": serializer.data}, status=status.HTTP_200_OK)
 
+    def patch(self, request, post_id):
+        post = get_object_or_404(BlogPost, id=post_id)
+
+        if post.profile != request.user.profile:
+            return Response(
+                {"error": "You do not have permission to edit this post."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = PostSerializer(
+            post,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
+
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(
+            {"post": serializer.data},
+            status=status.HTTP_200_OK,
+        )
+
 
 
 class BlogCategoryListView(APIView):
