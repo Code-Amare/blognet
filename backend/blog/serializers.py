@@ -1,12 +1,15 @@
 from rest_framework import serializers
 from .models import BlogPost, Comments, LikePost
 from user.models import Profile
+from api.serializers import UserSerializer
+
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
     class Meta:
         model = Profile
-        fields = ["avatar", "display_name"]
+        fields = ["avatar", "display_name", "user"]
 
 
 class PostSerializer(serializers.ModelSerializer):
