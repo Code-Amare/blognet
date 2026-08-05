@@ -1,0 +1,42 @@
+:root {
+  /* Brand & Accents */
+  --color-primary: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-glow: rgba(59, 130, 246, 0.25);
+
+  /* Backgrounds & Surfaces (Modern Deep Dark Theme) */
+  --bg-app: #0a0f1d;
+  --bg-surface: #111827;
+  --bg-surface-elevated: #1e293b;
+  --bg-input: #0f172a;
+  --bg-input-focus: #131d33;
+
+  /* Typography */
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+
+  /* Borders & Dividers */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.16);
+  --border-focus: var(--color-primary);
+
+  /* Feedback & Alerts */
+  --color-error: #f87171;
+  --bg-error: rgba(239, 68, 68, 0.12);
+  --border-error: rgba(239, 68, 68, 0.3);
+
+  --color-success: #34d399;
+  --bg-success: rgba(16, 185, 129, 0.12);
+  --border-success: rgba(16, 185, 129, 0.3);
+
+  --color-info: #60a5fa;
+  --bg-info: rgba(59, 130, 246, 0.12);
+  --border-info: rgba(59, 130, 246, 0.3);
+
+  /* Radii & Shadows */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --shadow-card: 0 20px 40px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-subtle);
+}

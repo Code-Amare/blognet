@@ -3,13 +3,11 @@ import styles from "./Login.module.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
 import HomeNav from "../../components/HomeNav/HomeNav";
-import { useAxios } from "../../hooks/useAxios"; // adjust path as needed
-
+import api from "../../hooks/api";
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
 
-// Theme configuration: starts with Red (#FF5252)
 const STATES = [
   { visualSrc: FoodVisual, color: "#FF5252" },
   { visualSrc: TechVisual, color: "#407BFF" },
@@ -23,66 +21,8 @@ const Login = ({ interval = 8000 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [index, setIndex] = useState(0);
-
   const navigate = useNavigate();
 
-  // ---- 1. Email login trigger ----
-  const [emailLoginData, setEmailLoginData] = useState(null);
-
-  const {
-    response: emailResponse,
-    loading: emailLoading,
-    error: emailError,
-  } = useAxios({
-    method: "POST",
-    url: "/login/",
-    data: emailLoginData,
-    run: emailLoginData !== null,
-    isProtected: false,
-  });
-
-  // ---- 2. Google login trigger ----
-  const [googleTokenData, setGoogleTokenData] = useState(null);
-
-  const {
-    response: googleResponse,
-    loading: googleLoading,
-    error: googleError,
-  } = useAxios({
-    method: "POST",
-    url: "/google/login/",
-    data: googleTokenData,
-    run: googleTokenData !== null,
-    isProtected: false,
-  });
-
-  // ---- Handle email login response ----
-  useEffect(() => {
-    if (emailResponse) {
-      handleAuthSuccess(emailResponse);
-      setEmailLoginData(null); // reset to avoid re-fetch
-    }
-    if (emailError) {
-      setGeneralError(getErrorMessage(emailError));
-      setIsSubmitting(false);
-      setEmailLoginData(null);
-    }
-  }, [emailResponse, emailError]);
-
-  // ---- Handle Google login response ----
-  useEffect(() => {
-    if (googleResponse) {
-      handleAuthSuccess(googleResponse);
-      setGoogleTokenData(null);
-    }
-    if (googleError) {
-      setGeneralError(getErrorMessage(googleError));
-      setIsGoogleSubmitting(false);
-      setGoogleTokenData(null);
-    }
-  }, [googleResponse, googleError]);
-
-  // ---- Preload visuals ----
   useEffect(() => {
     STATES.forEach((state) => {
       const img = new Image();
@@ -90,7 +30,6 @@ const Login = ({ interval = 8000 }) => {
     });
   }, []);
 
-  // ---- Theme rotation ----
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % STATES.length);
@@ -100,14 +39,12 @@ const Login = ({ interval = 8000 }) => {
 
   const current = STATES[index];
 
-  // ---- Helper: persist tokens & redirect ----
   const handleAuthSuccess = (data) => {
     if (data.access) localStorage.setItem("access", data.access);
     if (data.refresh) localStorage.setItem("refresh", data.refresh);
     navigate("/blog");
   };
 
-  // ---- Helper: extract error message ----
   const getErrorMessage = (err) => {
     const errorMsg = err?.response?.data?.errors || err?.response?.data?.error;
     if (typeof errorMsg === "string") return errorMsg;
@@ -117,30 +54,39 @@ const Login = ({ interval = 8000 }) => {
     return "Something went wrong. Please try again.";
   };
 
-  // ---- Email/Password Submission ----
   const handleSubmit = async (e) => {
     e.preventDefault();
     setGeneralError("");
     setIsSubmitting(true);
-
     if (!email || !password) {
       setGeneralError("Please fill in all fields.");
       setIsSubmitting(false);
       return;
     }
-
-    // Trigger the email login request
-    setEmailLoginData({ email, password });
+    try {
+      const response = await api.post("/user/login/", { email, password });
+      handleAuthSuccess(response.data);
+    } catch (error) {
+      setGeneralError(getErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // ---- Google OAuth Handler ----
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setGeneralError("");
       setIsGoogleSubmitting(true);
-
-      // Trigger the Google login request
-      setGoogleTokenData({ token: tokenResponse.access_token });
+      try {
+        const response = await api.post("/user/google/login/", {
+          token: tokenResponse.access_token,
+        });
+        handleAuthSuccess(response.data);
+      } catch (error) {
+        setGeneralError(getErrorMessage(error));
+      } finally {
+        setIsGoogleSubmitting(false);
+      }
     },
     onError: (errorResponse) => {
       console.error("Google Authorization Error:", errorResponse);
@@ -148,7 +94,6 @@ const Login = ({ interval = 8000 }) => {
     },
   });
 
-  // ---- Render ----
   return (
     <div
       className={styles.loginContainer}
@@ -189,7 +134,7 @@ const Login = ({ interval = 8000 }) => {
               type="button"
               className={styles.googleBtn}
               onClick={() => handleGoogleLogin()}
-              disabled={isSubmitting || isGoogleSubmitting || googleLoading}
+              disabled={isSubmitting || isGoogleSubmitting}
             >
               <svg className={styles.googleIcon} viewBox="0 0 24 24">
                 <path
@@ -210,7 +155,7 @@ const Login = ({ interval = 8000 }) => {
                 />
               </svg>
               <span>
-                {isGoogleSubmitting || googleLoading
+                {isGoogleSubmitting
                   ? "Connecting to Google..."
                   : "Continue with Google"}
               </span>
@@ -256,18 +201,20 @@ const Login = ({ interval = 8000 }) => {
                 />
               </div>
 
+              <div className={styles.forgotPassword}>
+                <Link to="/forgot-password" className={styles.link}>
+                  Forgot password?
+                </Link>
+              </div>
+
               <button
                 type="submit"
                 className={styles.submitBtn}
                 disabled={
-                  !email ||
-                  !password ||
-                  isSubmitting ||
-                  isGoogleSubmitting ||
-                  emailLoading
+                  !email || !password || isSubmitting || isGoogleSubmitting
                 }
               >
-                {isSubmitting || emailLoading ? "Signing in..." : "Sign In"}
+                {isSubmitting ? "Signing in..." : "Sign In"}
               </button>
             </form>
 

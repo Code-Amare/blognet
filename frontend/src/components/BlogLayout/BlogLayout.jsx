@@ -59,6 +59,7 @@ const BlogLayout = () => {
   // Update local state when profile data arrives
   useEffect(() => {
     if (profileData) {
+      console.log(profileData);
       setAvatar(profileData.avatar);
       setDisplayName(profileData.display_name);
       setProfile(profileData);
@@ -76,14 +77,15 @@ const BlogLayout = () => {
   // ---- Helper to build full image URLs ----
   const getAssetUrl = (path) => {
     if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
-    // Use the same base as the hook (or fallback)
-    const base = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8000";
-    const newPath = path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
+    // if (path.startsWith("http://") || path.startsWith("https://")) {
+    //   return path;
+    // }
+    // // Use the same base as the hook (or fallback)
+    // const base = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8000";
+    // const newPath = path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
 
-    return newPath;
+    // return newPath;
+    return path;
   };
 
   let currentPage = "blog";
