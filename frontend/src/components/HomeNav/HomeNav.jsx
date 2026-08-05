@@ -1,53 +1,65 @@
-// components/HomeNav/HomeNav.js
-import styles from "./HomeNav.module.css";
-import Logo from "../../assets/logo.png";
+import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import useAuth from "../../hooks/useAuth";
-import { useEffect } from "react";
+import { useSiteInfo } from "../../Context/SiteInfoContext";
+import { useUser } from "../../Context/UserContext";
+import styles from "./HomeNav.module.css";
 
-const HomeNav = ({ currentPage, isHomePage = true, bgColor }) => {
+const HomeNav = ({ currentPage, bgColor, isSticky = true }) => {
   const navigate = useNavigate();
+  const siteInfoContext = useSiteInfo();
+  const siteInfo = siteInfoContext?.siteInfo || {};
 
-  // Use relative paths – the base URL comes from VITE_API_URL
-  const { isAuthenticated, loading } = useAuth(
-    "/token/check/", // was: "http://127.0.0.1:8000/api/token/check/"
-    "/token/refresh/", // was: "http://127.0.0.1:8000/api/token/refresh/"
-  );
+  const { user = null, loading = false } = useUser() || {};
 
   useEffect(() => {
-    if (loading) return;
-    if (isAuthenticated) {
+    if (!loading && user?.isAuthenticated) {
       navigate("/blog");
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [user?.isAuthenticated, loading, navigate]);
+
+  // Determine positioning class based on the prop
+  const positionClass = isSticky ? styles.stickyNav : styles.normalNav;
 
   if (loading) {
-    return <div className={styles.loadingPlaceholder}>Loading...</div>;
+    return (
+      <div
+        className={`${styles.loadingPlaceholder} ${positionClass}`}
+        style={{ backgroundColor: bgColor }}
+      >
+        <span className={styles.loader}></span>
+      </div>
+    );
   }
 
   return (
     <header
-      className={styles.HomeNavContainer}
+      className={`${styles.navbar} ${positionClass}`}
       style={{ backgroundColor: bgColor }}
     >
-      <div className={styles.left} onClick={() => navigate("/")}>
-        <img src={Logo} alt="BlogNet Logo" className={styles.logoImg} />
-        <h1 className={styles.brandTitle}>BlogNet</h1>
+      <div className={styles.brand} onClick={() => navigate("/")}>
+        {siteInfo?.siteLogoUrl && (
+          <img
+            src={siteInfo.siteLogoUrl}
+            alt={`${siteInfo.siteName || "Site"} Logo`}
+            className={styles.logo}
+          />
+        )}
+        <h1 className={styles.brandName}>{siteInfo?.siteName || "BlogNet"}</h1>
       </div>
 
-      <nav className={styles.right}>
+      <nav className={styles.navLinks}>
         <Link
           to="/login"
-          className={`${styles.navLink} ${
-            currentPage === "signIn" ? styles.currentPage : ""
+          className={`${styles.link} ${
+            currentPage === "signIn" ? styles.activeLink : ""
           }`}
         >
           Sign In
         </Link>
         <Link
           to="/Register"
-          className={`${styles.navLink} ${styles.signUpBtn} ${
-            currentPage === "signUp" ? styles.currentPage : ""
+          className={`${styles.link} ${styles.signUpBtn} ${
+            currentPage === "signUp" ? styles.activeLink : ""
           }`}
         >
           Sign Up

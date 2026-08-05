@@ -7,17 +7,20 @@ import { BrowserRouter } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { PageTitleProvider } from "./context/PageTitleContext.jsx";
 import { SiteInfoProvider } from "./context/SiteInfoContext.jsx";
+import { UserProvider } from "./Context/UserContext.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-        <SiteInfoProvider>
-          <PageTitleProvider>
-            <App />
-          </PageTitleProvider>
-        </SiteInfoProvider>
-      </GoogleOAuthProvider>
+      <UserProvider>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+          <SiteInfoProvider>
+            <PageTitleProvider>
+              <App />
+            </PageTitleProvider>
+          </SiteInfoProvider>
+        </GoogleOAuthProvider>
+      </UserProvider>
     </BrowserRouter>
   </StrictMode>,
 );

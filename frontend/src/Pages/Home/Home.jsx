@@ -9,6 +9,7 @@ import TechVisual from "../../assets/Robotarm.gif";
 import FoodShowCase from "../../assets/food.png";
 import TechShowCase from "../../assets/tech.png";
 import EduShowCase from "../../assets/edu.png";
+import { useNavigate } from "react-router-dom";
 
 const ANIM_SPEED_MS = 400;
 
@@ -23,6 +24,7 @@ const Home = ({ interval = 4000 }) => {
   // Starts on index 0 (Red / Food Theme)
   const [index, setIndex] = useState(0);
   const [animState, setAnimState] = useState("enter");
+  const navigate = useNavigate();
 
   // Preload assets for zero-lag switching
   useEffect(() => {
@@ -60,7 +62,7 @@ const Home = ({ interval = 4000 }) => {
         "--anim-speed": `${ANIM_SPEED_MS}ms`, // Pass speed directly to CSS
       }}
     >
-      <HomeNav bgColor={current.color} />
+      <HomeNav bgColor={current.color} isSticky={false} />
 
       <main className={styles.heroSection}>
         {/* Left Column */}
@@ -76,7 +78,7 @@ const Home = ({ interval = 4000 }) => {
           </p>
           <button
             onClick={() => {
-              navigation("/login");
+              navigate("/login");
             }}
             className={styles.primaryBtn}
           >
