@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Confirm Email Address
+    </title>
+</head>
+
+<body style="
+    margin:0;
+    padding:0;
+    background:#f4f4f5;
+    font-family:Arial, Helvetica, sans-serif;
+">
+
+    <div style="
+        max-width:600px;
+        margin:40px auto;
+        background:#ffffff;
+        border:1px solid #e4e4e7;
+        border-radius:10px;
+        overflow:hidden;
+    ">
+
+        <!-- Header -->
+
+        <div style="
+            padding:24px;
+            border-bottom:1px solid #e4e4e7;
+            text-align:center;
+        ">
+
+            <h1 style="
+                margin:0;
+                font-size:22px;
+                font-weight:600;
+                color:#18181b;
+            ">
+
+                FullStack Template
+
+            </h1>
+
+        </div>
+
+
+        <!-- Body -->
+
+        <div style="
+            padding:32px;
+            color:#27272a;
+        ">
+
+            <p style="
+                margin:0 0 20px;
+                font-size:16px;
+            ">
+
+                Hello
+                <strong>
+                    {{ user.get_full_name }}
+                </strong>,
+
+            </p>
+
+
+            <h2 style="
+                margin:0 0 16px;
+                font-size:22px;
+                font-weight:600;
+                color:#18181b;
+            ">
+
+                Confirm Your New Email Address
+
+            </h2>
+
+
+            <p style="
+                margin:0 0 24px;
+                font-size:15px;
+                line-height:1.6;
+                color:#52525b;
+            ">
+
+                A request was made to change the email address
+                associated with your account to:
+
+            </p>
+
+
+            <!-- New Email -->
+
+            <div style="
+                margin:24px 0;
+                padding:18px;
+                background:#f4f4f5;
+                border:1px solid #e4e4e7;
+                border-radius:8px;
+                text-align:center;
+            ">
+
+                <p style="
+                    margin:0 0 8px;
+                    font-size:13px;
+                    color:#71717a;
+                ">
+
+                    New email address
+
+                </p>
+
+
+                <div style="
+                    font-size:17px;
+                    font-weight:600;
+                    color:#18181b;
+                    word-break:break-word;
+                ">
+
+                    {{ new_email }}
+
+                </div>
+
+            </div>
+
+
+            <p style="
+                margin:0 0 24px;
+                font-size:15px;
+                line-height:1.6;
+                color:#52525b;
+            ">
+
+                Click the button below to confirm this email address
+                and continue with the email change.
+
+            </p>
+
+
+            <!-- Confirmation Button -->
+
+            <div style="
+                margin:28px 0;
+                text-align:center;
+            ">
+
+                <a
+                    href="{{ confirmation_url }}"
+                    style="
+                        display:inline-block;
+                        padding:14px 28px;
+                        background:#18181b;
+                        color:#ffffff;
+                        text-decoration:none;
+                        border-radius:7px;
+                        font-size:15px;
+                        font-weight:600;
+                    "
+                >
+
+                    Confirm Email Address
+
+                </a>
+
+            </div>
+
+
+            <p style="
+                margin:0 0 20px;
+                font-size:14px;
+                line-height:1.6;
+                color:#71717a;
+            ">
+
+                This confirmation request expires on:
+
+                <strong>
+                    {{ expires_at }}
+                </strong>.
+
+            </p>
+
+
+            <div style="
+                padding:14px 16px;
+                background:#fafafa;
+                border-left:3px solid #a1a1aa;
+                font-size:14px;
+                line-height:1.5;
+                color:#52525b;
+            ">
+
+                If you did not request this email change,
+                you can safely ignore this email.
+
+            </div>
+
+
+            <p style="
+                margin:28px 0 0;
+                font-size:14px;
+                color:#52525b;
+            ">
+
+                If the button above does not work, copy and paste
+                the following link into your browser:
+
+            </p>
+
+
+            <p style="
+                margin:10px 0 0;
+                font-size:13px;
+                line-height:1.5;
+                word-break:break-all;
+                color:#71717a;
+            ">
+
+                {{ confirmation_url }}
+
+            </p>
+
+        </div>
+
+
+        <!-- Footer -->
+
+        <div style="
+            padding:16px 24px;
+            background:#fafafa;
+            border-top:1px solid #e4e4e7;
+            text-align:center;
+            font-size:12px;
+            color:#a1a1aa;
+        ">
+
+            © FullStack Template
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

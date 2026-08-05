@@ -10,165 +10,388 @@ from django.shortcuts import get_object_or_404
 
 from .models import BlogPost, Comments, LikePost
 from .serializers import PostSerializer, CommentSerializer
-from user.models import Profile
 
 
+class LikePostView(APIView):
 
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def like_post(request):
-    profile = get_object_or_404(Profile, user=request.user)
-    post_id = request.data.get("id")
-    
-    if not post_id:
-        return Response({"error": "post_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+    permission_classes = [IsAuthenticated]
 
-    post = get_object_or_404(BlogPost, id=post_id)
-    like_obj, created = LikePost.objects.get_or_create(profile=profile, post=post)
 
-    if not created:
-        if like_obj.is_liked:
-            like_obj.is_liked = False
-            post.like = max(0, post.like - 1)
-            msg = "Unliked post."
+    def post(self, request):
+
+        post_id = request.data.get("id")
+
+
+        if not post_id:
+            return Response(
+                {
+                    "error": "post_id is required."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+        post = get_object_or_404(
+            BlogPost,
+            id=post_id
+        )
+
+
+        like_obj, created = LikePost.objects.get_or_create(
+            user=request.user,
+            post=post
+        )
+
+
+        if not created:
+
+            if like_obj.is_liked:
+
+                like_obj.is_liked = False
+                post.like = max(
+                    0,
+                    post.like - 1
+                )
+
+                msg = "Unliked post."
+
+
+            else:
+
+                like_obj.is_liked = True
+                post.like += 1
+
+                msg = "Liked post."
+
+
+            like_obj.save()
+
+
         else:
-            like_obj.is_liked = True
+
             post.like += 1
             msg = "Liked post."
-        like_obj.save()
-    else:
-        post.like += 1
-        msg = "Liked post."
-
-    post.save()
-    return Response({"status": msg, "like_count": post.like}, status=status.HTTP_200_OK)
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def my_post(request):
-    profile = get_object_or_404(Profile, user=request.user)
-    posts = BlogPost.objects.filter(profile=profile)
-    serializer = PostSerializer(posts, many=True, user=request.user)
-    return Response({"count": posts.count(), "results": serializer.data}, status=status.HTTP_200_OK)
+
+        post.save()
+
+
+        return Response(
+            {
+                "status": msg,
+                "like_count": post.like
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+class MyPostView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request):
+
+        posts = BlogPost.objects.filter(
+            user=request.user
+        )
+
+
+        serializer = PostSerializer(
+            posts,
+            many=True,
+            user=request.user
+        )
+
+
+        return Response(
+            {
+                "count": posts.count(),
+                "results": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
 
 
 class PostPagination(PageNumberPagination):
-    page_size = 10  # Increased from 2 for better UI experience
+    page_size = 10
 
 
 class PaginatedPostView(ListAPIView):
+
     queryset = BlogPost.objects.all().order_by("-timestamp")
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = PostPagination
 
+
     def get_serializer(self, *args, **kwargs):
+
         kwargs["user"] = self.request.user
-        return super().get_serializer(*args, **kwargs)
+
+        return super().get_serializer(
+            *args,
+            **kwargs
+        )
+
 
 
 class PostView(APIView):
+
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]  # Fixed: File upload support
+
+    parser_classes = [
+        MultiPartParser,
+        FormParser
+    ]
+
 
     def get(self, request):
+
         user_id = request.query_params.get("user_id")
+
         if user_id:
-            posts = BlogPost.objects.filter(profile__user__id=user_id) # Fixed lookup
+
+            posts = BlogPost.objects.filter(
+                user__id=user_id
+            )
+
         else:
+
             posts = BlogPost.objects.all()
 
-        serializer = PostSerializer(posts, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+
+        serializer = PostSerializer(
+            posts,
+            many=True,
+            user=request.user
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+
 
     def post(self, request):
-        serializer = PostSerializer(data=request.data)
+
+        serializer = PostSerializer(
+            data=request.data,
+            user=request.user
+        )
+
         if serializer.is_valid():
-            profile = get_object_or_404(Profile, user=request.user)
-            serializer.save(profile=profile)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            serializer.save(
+                user=request.user
+            )
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
 
     def put(self, request, pk):
-        post = get_object_or_404(BlogPost, pk=pk, profile__user=request.user) # Fixed lookup
-        serializer = PostSerializer(post, data=request.data)
+
+        post = get_object_or_404(
+            BlogPost,
+            pk=pk,
+            user=request.user
+        )
+
+
+        serializer = PostSerializer(
+            post,
+            data=request.data,
+            user=request.user
+        )
+
+
         if serializer.is_valid():
+
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK
+            )
+
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
 
     def patch(self, request, pk):
-        post = get_object_or_404(BlogPost, pk=pk, profile__user=request.user) # Fixed lookup
-        serializer = PostSerializer(post, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        post = get_object_or_404(
+            BlogPost,
+            pk=pk,
+            user=request.user
+        )
 
-class CommentView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, post_id):
-
-        if not post_id:
-            return Response({"error": "post_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        comments = Comments.objects.filter(post__id=post_id)
-        serializer = CommentSerializer(comments, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def post(self, request, post_id=None):
-        profile = get_object_or_404(Profile, user=request.user)
-        
-        # Inject post ID from path if present in URL
-        data = request.data.copy()
-        if post_id and "post" not in data:
-            data["post"] = post_id
-
-        serializer = CommentSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save(commenter=profile)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-            
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class PostDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, post_id):
-        user = request.user
-        post = BlogPost.objects.filter(id=post_id).first()
-        if not post:
-            return Response({"error": "Post not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = PostSerializer(post, user=user)
-        return Response({"post": serializer.data}, status=status.HTTP_200_OK)
-
-    def patch(self, request, post_id):
-        post = get_object_or_404(BlogPost, id=post_id)
-
-        if post.profile != request.user.profile:
-            return Response(
-                {"error": "You do not have permission to edit this post."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
         serializer = PostSerializer(
             post,
             data=request.data,
             partial=True,
-            context={"request": request},
+            user=request.user
         )
 
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
+
+        if serializer.is_valid():
+
+            serializer.save()
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK
+            )
+
 
         return Response(
-            {"post": serializer.data},
-            status=status.HTTP_200_OK,
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+
+class CommentView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request, post_id):
+
+        comments = Comments.objects.filter(
+            post_id=post_id
+        )
+
+        serializer = CommentSerializer(
+            comments,
+            many=True
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+
+
+    def post(self, request, post_id=None):
+
+        data = request.data.copy()
+
+
+        if post_id and "post" not in data:
+            data["post"] = post_id
+
+
+        serializer = CommentSerializer(
+            data=data
+        )
+
+
+        if serializer.is_valid():
+
+            serializer.save(
+                commenter=request.user
+            )
+
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+
+class PostDetailView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+
+    def get(self, request, post_id):
+
+        post = get_object_or_404(
+            BlogPost,
+            id=post_id
+        )
+
+
+        serializer = PostSerializer(
+            post,
+            user=request.user
+        )
+
+
+        return Response(
+            {
+                "post": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+
+    def patch(self, request, post_id):
+
+        post = get_object_or_404(
+            BlogPost,
+            id=post_id
+        )
+
+
+        if post.user != request.user:
+
+            return Response(
+                {
+                    "error": "You do not have permission to edit this post."
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+
+        serializer = PostSerializer(
+            post,
+            data=request.data,
+            partial=True,
+            user=request.user
+        )
+
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        serializer.save()
+
+
+        return Response(
+            {
+                "post": serializer.data
+            },
+            status=status.HTTP_200_OK
         )
 
 
@@ -176,7 +399,13 @@ class PostDetailView(APIView):
 class BlogCategoryListView(APIView):
 
     def get(self, request):
-        return Response([
-            {"value": value, "label": label}
-            for value, label in BlogPost.CATEGORY_CHOICES
-        ])
+
+        return Response(
+            [
+                {
+                    "value": value,
+                    "label": label
+                }
+                for value, label in BlogPost.CATEGORY_CHOICES
+            ]
+        )

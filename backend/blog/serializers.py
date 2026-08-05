@@ -1,30 +1,23 @@
 from rest_framework import serializers
 from .models import BlogPost, Comments, LikePost
-from user.models import Profile
-from api.serializers import UserSerializer
-
-
-
-class ProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    class Meta:
-        model = Profile
-        fields = ["avatar", "display_name", "user"]
-
+from user.serializers import UserSerializer
 
 class PostSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
+
+    user = UserSerializer(read_only=True)
+    post_img = serializers.SerializerMethodField(read_only=True)
     is_liked_by_me = serializers.SerializerMethodField()
 
-    def __init__(self, *args, user=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.user = user
+    remove_post_img = serializers.BooleanField(
+        write_only=True,
+        required=False
+    )
 
     class Meta:
         model = BlogPost
         fields = [
             "id",
-            "profile",
+            "user",
             "post_title",
             "post_body",
             "post_title_color",
@@ -33,36 +26,21 @@ class PostSerializer(serializers.ModelSerializer):
             "like",
             "is_liked_by_me",
             "timestamp",
+            "remove_post_img",
         ]
-        read_only_fields = [
-            "profile",
-            "like",
-            "is_liked_by_me",
-            "timestamp",
-        ]
-
-    def get_is_liked_by_me(self, obj):
-        if not self.user or not self.user.is_authenticated:
-            return False
-
-        return LikePost.objects.filter(
-            post=obj,
-            profile=self.user.profile,
-            is_liked=True,
-        ).exists()
 
 
 class LikePostSerializer(serializers.ModelSerializer):
-    profile = ProfileSerializer(read_only=True)
+    user = UserSerializer(read_only=True)
     post = PostSerializer(read_only=True)
 
     class Meta:
         model = LikePost
-        fields = ["post", "profile", "is_liked"]
+        fields = ["post", "user", "is_liked"]
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    commenter = ProfileSerializer(read_only=True)
+    commenter = UserSerializer(read_only=True)
 
     class Meta:
         model = Comments

@@ -1,76 +1,90 @@
-from django.contrib.auth.models import User
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
-from user.models import Profile
-from django.contrib.auth import authenticate
+
+from .models import VerificationChallenge, SiteSettings
 
 
-class EmailTokenObtainPairView(TokenObtainPairSerializer):
-    username_field = "email"
+class VerificationChallengeSerializer(serializers.ModelSerializer):
 
-    def validate(self, attrs):
-        email = attrs.get("email")
-        password = attrs.get("password")
+    is_verified = serializers.BooleanField(
+        read_only=True,
+    )
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("No user with this email.")
+    is_expired = serializers.BooleanField(
+        read_only=True,
+    )
 
-        user = authenticate(username=user.username, password=password)
-
-        if not user:
-            raise serializers.ValidationError("Invalid password.")
-
-        refresh = self.get_token(user)
-        return {"refresh": str(refresh), "access": str(refresh.access_token)}
-
-
-class ProfileSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Profile
-        fields = ["avatar", "display_name"]
-
-
-class UserSerializer(serializers.ModelSerializer):
+    is_valid = serializers.BooleanField(
+        read_only=True,
+    )
 
     class Meta:
-        model = User
+
+        model = VerificationChallenge
+
+        fields = [
+            "challenge_id",
+            "action",
+            "method",
+            "attempts",
+            "max_attempts",
+            "expired",
+            "created_at",
+            "expires_at",
+            "verified_at",
+            "consumed_at",
+            "is_verified",
+            "is_expired",
+            "is_valid",
+        ]
+
+        read_only_fields = [    
+            "challenge_id",
+            "attempts",
+            "max_attempts",
+            "expired",
+            "created_at",
+            "expires_at",
+            "verified_at",
+            "consumed_at",
+            "is_verified",
+            "is_expired",
+            "is_valid",
+        ]
+
+
+class SiteSettingsSerializer(serializers.ModelSerializer):
+    site_logo = serializers.SerializerMethodField(read_only=True)
+    class Meta:
+        model = SiteSettings
         fields = "__all__"
 
 
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    def get_site_logo(self, obj):
+        if not obj.site_logo:
+            return None
+        
+        try:
+            url = obj.site_logo.url
 
-    class Meta:
-        model = User
-        fields = ("username", "email", "password")
+            if url.startswith("http://"):
+                url = url.replace(
+                    "http://",
+                    "https://",
+                    1
+                )
 
-    def validate_username(self, value):
-        if len(value) == 0:
-            raise serializers.ValidationError("User can't be empty.")
-        elif User.objects.filter(username=value).exists():
-            raise serializers.ValidationError("User already taken.")
-        return value
+            return url
 
-    def validate_email(self, value):
-        if len(value) == 0:
-            raise serializers.ValidationError("Email can't be empty.")
-        elif User.objects.filter(email=value):
-            raise serializers.ValidationError("Email already taken.")
-        return value
+        except AttributeError:
+            url = str(obj.site_logo)
 
-    def validate_password(self, value):
-        if len(value) == 0:
-            raise serializers.ValidationError("Password can't be empty.")
-        elif len(value) < 4:
-            raise serializers.ValidationError("Password can't be below 4 characters.")
-        elif not any(char.isupper() for char in value):
-            raise serializers.ValidationError("Password must contain at least one capital letter.")
-        elif not any(char.islower() for char in value):
-            raise serializers.ValidationError("Password must contain at least on small letter.")
+            if url.startswith("http://"):
+                url = url.replace(
+                    "http://",
+                    "https://",
+                    1
+                )
 
-        return value
+            return url
 
-    def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        return obj.site_logo.url

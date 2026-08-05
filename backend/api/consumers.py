@@ -1,82 +1,90 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
-from user.models import Profile
 from channels.db import database_sync_to_async
-
 
 class LikeConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.group_name = "like"
-
-        await self.channel_layer.group_add(self.group_name, self.channel_name)
-
+        await self.channel_layer.group_add(
+            self.group_name,
+            self.channel_name
+        )
         await self.accept()
 
-        await self.send(text_data=json.dumps({"message": "Like Consumer Connected successfully"}))
-
+        await self.send(
+            text_data=json.dumps({
+                "message": "Like Consumer Connected successfully"
+            })
+        )
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.group_name, self.channel_name)
-        await self.send(text_data=json.dumps({"message": "Like Consumer is Closed"}))
 
+        await self.channel_layer.group_discard(
+            self.group_name,
+            self.channel_name
+        )
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message = data["message"]
-        post_id = message.get("post_id", None)
-        username = message.get("username", None)
+        message = data.get("message", {})
+        post_id = message.get("post_id")
+        email = message.get("email")
 
-        like_count = await self.save_like(post_id, username)
-        print(username)
-
+        like_count = await self.save_like(
+            post_id,
+            email
+        )
         await self.channel_layer.group_send(
             self.group_name,
             {
                 "type": "send_message",
                 "message": message,
                 "post_id": post_id,
-                "username": username,
                 "like_count": like_count,
-            },
+            }
         )
-
     async def send_message(self, event):
+
         await self.send(
-            text_data=json.dumps(
-                {
-                    "message": event["message"],
-                    "post_id": event["post_id"],
-                    "like_count": event["like_count"],
-                }
-            )
+            text_data=json.dumps({
+                "message": event["message"],
+                "post_id": event["post_id"],
+                "like_count": event["like_count"],
+            })
         )
-
     @database_sync_to_async
-    def save_like(self, post_id, username):
+    def save_like(self, post_id, email):
+
         from blog.models import LikePost, BlogPost
-
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
         try:
-            profile = Profile.objects.get(user__username=username)
-        except Profile.DoesNotExist:
-            return "Profile doesn't exist"
-
+            user = User.objects.get(
+                email=email
+            )
+        except User.DoesNotExist:
+            return "User doesn't exist"
         try:
-            post = BlogPost.objects.get(id=post_id)
+            post = BlogPost.objects.get(
+                id=post_id
+            )
         except BlogPost.DoesNotExist:
-            return "The post doesn't exist"
+            return "Post doesn't exist"
 
-        if LikePost.objects.filter(profile=profile, post=post).exists():
-            like_post = LikePost.objects.get(profile=profile, post=post)
+        like_post, created = LikePost.objects.get_or_create(
+            user=user,
+            post=post,
+            defaults={
+                "is_liked": True
+            }
+        )
+        if not created:
             if like_post.is_liked:
-                post.like -= 1
                 like_post.is_liked = False
+                post.like -= 1
             else:
-                post.like += 1
                 like_post.is_liked = True
-
-            post.save()
+                post.like += 1
             like_post.save()
         else:
-            LikePost.objects.create(profile=profile, post=post)
             post.like += 1
-            post.save()
-
+        post.save()
         return post.like
