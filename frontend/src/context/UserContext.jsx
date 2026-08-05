@@ -3,24 +3,6 @@ import api from "../hooks/api";
 
 const UserContext = createContext(null);
 
-const initialUser = {
-  id: null,
-  isAuthenticated: false,
-  firstName: null,
-  lastName: null,
-  fullName: null,
-  dateOfBirth: null,
-  gender: null,
-  email: null,
-  phoneNumber: null,
-  profilePicture: null,
-  profilePictureUpdatedAt: null,
-  dateJoined: null,
-  emailVerified: null,
-  twoFactorEnabled: null,
-  role: null,
-};
-
 function formatUser(userData) {
   return {
     id: userData.id,
@@ -42,7 +24,7 @@ function formatUser(userData) {
 }
 
 export function UserProvider({ children }) {
-  const [user, setUser] = useState(initialUser);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const getUser = async () => {
@@ -52,7 +34,7 @@ export function UserProvider({ children }) {
       const response = await api.get("/user/me/");
       setUser(formatUser(response.data.user));
     } catch (error) {
-      setUser(initialUser);
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -70,9 +52,14 @@ export function UserProvider({ children }) {
   const updateProfile = async (payload) => {
     try {
       const response = await api.patch("/user/profile/update/", payload);
-      setUser(formatUser(response.data.user));
 
-      return { success: true };
+      const formattedUser = formatUser(response.data.user);
+      setUser(formattedUser);
+
+      return {
+        success: true,
+        user: formattedUser,
+      };
     } catch (error) {
       const isNoChange = error.response?.data?.is_no_change;
 
@@ -90,7 +77,7 @@ export function UserProvider({ children }) {
     try {
       await api.post("/user/logout/");
     } finally {
-      setUser(initialUser);
+      setUser(null);
       setLoading(false);
     }
   };
@@ -104,6 +91,7 @@ export function UserProvider({ children }) {
         logout,
         getUser,
         updateProfile,
+        isAuthenticated: !!user,
       }}
     >
       {children}
@@ -112,7 +100,13 @@ export function UserProvider({ children }) {
 }
 
 export function useUser() {
-  return useContext(UserContext);
+  const context = useContext(UserContext);
+
+  if (!context) {
+    throw new Error("useUser must be used within a UserProvider");
+  }
+
+  return context;
 }
 
 export default UserContext;

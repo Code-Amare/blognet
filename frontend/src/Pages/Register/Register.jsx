@@ -3,13 +3,13 @@ import styles from "./Register.module.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
 import HomeNav from "../../components/HomeNav/HomeNav";
-import { useAxios } from "../../hooks/useAxios"; // adjust path
+import api from "../../hooks/api";
 
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
+import { usePageTitle } from "../../Context/PageTitleContext";
 
-// Theme configuration
 const STATES = [
   { visualSrc: FoodVisual, color: "#FF5252" },
   { visualSrc: TechVisual, color: "#407BFF" },
@@ -20,6 +20,7 @@ const Register = ({ interval = 8000 }) => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [generalError, setGeneralError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,41 +28,14 @@ const Register = ({ interval = 8000 }) => {
   const [index, setIndex] = useState(0);
 
   const navigate = useNavigate();
+  const { updatePageTitle } = usePageTitle();
 
-  // ---- 1. Standard registration trigger ----
-  const [registerData, setRegisterData] = useState(null);
-  const {
-    response: registerResponse,
-    loading: registerLoading,
-    error: registerError,
-  } = useAxios({
-    method: "POST",
-    url: "/register/",
-    data: registerData,
-    run: registerData !== null,
-    isProtected: false,
-  });
-
-  // ---- 2. Google registration trigger ----
-  const [googleTokenData, setGoogleTokenData] = useState(null);
-  const {
-    response: googleResponse,
-    loading: googleLoading,
-    error: googleError,
-  } = useAxios({
-    method: "POST",
-    url: "/google/register/",
-    data: googleTokenData,
-    run: googleTokenData !== null,
-    isProtected: false,
-  });
-
-  // ---- Preload visuals & theme rotation (unchanged) ----
   useEffect(() => {
     STATES.forEach((state) => {
       const img = new Image();
       img.src = state.visualSrc;
     });
+    updatePageTitle("Register");
   }, []);
 
   useEffect(() => {
@@ -73,26 +47,34 @@ const Register = ({ interval = 8000 }) => {
 
   const current = STATES[index];
 
-  // ---- Helper: persist tokens & redirect ----
   const handleAuthSuccess = (data) => {
     if (data.access) localStorage.setItem("access", data.access);
     if (data.refresh) localStorage.setItem("refresh", data.refresh);
     navigate("/blog");
   };
 
-  // ---- Handle standard registration response ----
-  useEffect(() => {
-    if (registerResponse) {
-      // Registration successful – redirect to login
-      navigate("/login");
-      setRegisterData(null);
-      setIsSubmitting(false);
-    }
-  }, [registerResponse, navigate]);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setGeneralError("");
+    setFieldErrors({});
 
-  useEffect(() => {
-    if (registerError) {
-      const errorsObj = registerError.response?.data?.errors;
+    if (!username || !email || !password || !confirmPassword) {
+      setGeneralError("Please fill in all fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setFieldErrors({ confirmPassword: ["Passwords do not match."] });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await api.post("/register/", { username, email, password });
+      navigate("/login");
+    } catch (err) {
+      const errorsObj = err.response?.data?.errors;
       if (typeof errorsObj === "string") {
         setGeneralError(errorsObj);
       } else if (typeof errorsObj === "object" && errorsObj !== null) {
@@ -100,60 +82,33 @@ const Register = ({ interval = 8000 }) => {
       } else {
         setGeneralError("Something went wrong. Please try again.");
       }
-      setRegisterData(null);
+    } finally {
       setIsSubmitting(false);
     }
-  }, [registerError]);
-
-  // ---- Handle Google registration response ----
-  useEffect(() => {
-    if (googleResponse) {
-      handleAuthSuccess(googleResponse);
-      setGoogleTokenData(null);
-      setIsGoogleSubmitting(false);
-    }
-  }, [googleResponse]);
-
-  useEffect(() => {
-    if (googleError) {
-      const errorMsg =
-        googleError.response?.data?.errors || googleError.response?.data?.error;
-      if (typeof errorMsg === "string") {
-        setGeneralError(errorMsg);
-      } else {
-        setGeneralError("Google Sign-Up failed. Please try again.");
-      }
-      setGoogleTokenData(null);
-      setIsGoogleSubmitting(false);
-    }
-  }, [googleError]);
-
-  // ---- Standard Registration Handler ----
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setGeneralError("");
-    setFieldErrors({});
-    setIsSubmitting(true);
-
-    if (!username || !email || !password) {
-      setGeneralError("Please fill in all fields.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Trigger the registration request
-    setRegisterData({ username, email, password });
   };
 
-  // ---- Google OAuth Registration Handler ----
   const handleGoogleRegister = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       setGeneralError("");
       setFieldErrors({});
       setIsGoogleSubmitting(true);
 
-      // Trigger Google registration
-      setGoogleTokenData({ token: tokenResponse.access_token });
+      try {
+        const response = await api.post("/google/register/", {
+          token: tokenResponse.access_token,
+        });
+        handleAuthSuccess(response.data);
+      } catch (err) {
+        const errorMsg =
+          err.response?.data?.errors || err.response?.data?.error;
+        if (typeof errorMsg === "string") {
+          setGeneralError(errorMsg);
+        } else {
+          setGeneralError("Google Sign-Up failed. Please try again.");
+        }
+      } finally {
+        setIsGoogleSubmitting(false);
+      }
     },
     onError: (errorResponse) => {
       console.error("Google Authorization Error:", errorResponse);
@@ -199,7 +154,7 @@ const Register = ({ interval = 8000 }) => {
               type="button"
               className={styles.googleBtn}
               onClick={() => handleGoogleRegister()}
-              disabled={isSubmitting || isGoogleSubmitting || googleLoading}
+              disabled={isSubmitting || isGoogleSubmitting}
             >
               <svg className={styles.googleIcon} viewBox="0 0 24 24">
                 <path
@@ -220,7 +175,7 @@ const Register = ({ interval = 8000 }) => {
                 />
               </svg>
               <span>
-                {isGoogleSubmitting || googleLoading
+                {isGoogleSubmitting
                   ? "Connecting to Google..."
                   : "Sign up with Google"}
               </span>
@@ -281,19 +236,70 @@ const Register = ({ interval = 8000 }) => {
                 <label htmlFor="password" className={styles.label}>
                   Password
                 </label>
-                <input
-                  className={`${styles.input} ${
-                    fieldErrors.password ? styles.inputError : ""
-                  }`}
-                  type="password"
-                  id="password"
-                  placeholder="Create a strong password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div style={{ position: "relative" }}>
+                  <input
+                    className={`${styles.input} ${
+                      fieldErrors.password ? styles.inputError : ""
+                    }`}
+                    type="password"
+                    id="password"
+                    placeholder="Create a strong password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={{
+                      paddingRight: "40px",
+                      width: "100%",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      cursor: "help",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "50%",
+                      border: "1px solid currentColor",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      color: "inherit",
+                      opacity: 0.6,
+                    }}
+                    title="Password requirements info"
+                  >
+                    i
+                  </div>
+                </div>
                 {fieldErrors.password && (
                   <span className={styles.fieldError}>
                     {fieldErrors.password.join(" ")}
+                  </span>
+                )}
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label htmlFor="confirmPassword" className={styles.label}>
+                  Confirm Password
+                </label>
+                <input
+                  className={`${styles.input} ${
+                    fieldErrors.confirmPassword ? styles.inputError : ""
+                  }`}
+                  type="password"
+                  id="confirmPassword"
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                {fieldErrors.confirmPassword && (
+                  <span className={styles.fieldError}>
+                    {fieldErrors.confirmPassword.join(" ")}
                   </span>
                 )}
               </div>
@@ -305,14 +311,12 @@ const Register = ({ interval = 8000 }) => {
                   !username ||
                   !email ||
                   !password ||
+                  !confirmPassword ||
                   isSubmitting ||
-                  isGoogleSubmitting ||
-                  registerLoading
+                  isGoogleSubmitting
                 }
               >
-                {isSubmitting || registerLoading
-                  ? "Creating Account..."
-                  : "Sign Up"}
+                {isSubmitting ? "Creating Account..." : "Sign Up"}
               </button>
             </form>
 

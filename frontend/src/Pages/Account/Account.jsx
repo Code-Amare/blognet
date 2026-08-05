@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import numeral from "numeral";
@@ -10,55 +10,49 @@ import {
   FaRegNewspaper,
   FaUserEdit,
 } from "react-icons/fa";
-import UserContext from "../../context/UserContext";
-import { useAxios } from "../../hooks/useAxios";
+import { useUser } from "../../Context/UserContext";
+import { usePageTitle } from "../../Context/PageTitleContext";
+import api from "../../hooks/api";
 import styles from "./Account.module.css";
 
-const Account = ({ profileApiUrl = "/profile/" }) => {
-  const { username } = useParams();
+const Account = () => {
   const navigate = useNavigate();
-  const { user: currentUser } = useContext(UserContext);
+  const { user } = useUser();
+  const { updatePageTitle } = usePageTitle();
 
   const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const targetUsername = username || currentUser?.username;
-
-  const {
-    response: profileData,
-    loading,
-    error: fetchError,
-  } = useAxios({
-    method: "GET",
-    url: targetUsername ? `${profileApiUrl}${targetUsername}/` : null,
-    isProtected: true,
-    run: !!targetUsername,
-  });
+  // Use the user ID from the URL, or fall back to the current logged-in user’s ID
+  let targetUserId = null;
+  useEffect(() => {}, [user]);
 
   useEffect(() => {
-    if (profileData) {
-      setProfile(profileData);
-      setError(null);
+    if (!user) {
+      setLoading(false);
+      return;
     }
-  }, [profileData]);
 
-  useEffect(() => {
-    if (fetchError) {
-      console.error("Error fetching profile:", fetchError);
-      setError("Failed to load user profile.");
-    }
-  }, [fetchError]);
+    const fetchProfile = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get(`/blog/profile/${user.id}/`);
+        const data = response.data; // shape: { id, full_name, profile_picture, date_joined, stats, posts, ... }
+        setProfile(data);
+        updatePageTitle(data.full_name || "Profile");
+        console.log(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        setError("Failed to load user profile.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const getAssetUrl = (path) => {
-    if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
-    const mediaBase = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8001";
-    return path.startsWith("/")
-      ? `${mediaBase}${path}`
-      : `${mediaBase}/${path}`;
-  };
+    fetchProfile();
+  }, [user, updatePageTitle]);
 
   const getReadableTime = (timestamp) => {
     if (!timestamp) return "";
@@ -93,11 +87,9 @@ const Account = ({ profileApiUrl = "/profile/" }) => {
     );
   }
 
-  const isSelf = currentUser?.username === profile.username;
-  const avatar = getAssetUrl(profile.avatar);
-  const initialLetter = (profile.display_name || profile.username || "?")
-    .charAt(0)
-    .toUpperCase();
+  const isSelf = user?.id === profile.id;
+  const avatar = profile.profile_picture || null; // already a full Cloudinary URL
+  const initialLetter = (profile.full_name || "?").charAt(0).toUpperCase();
 
   return (
     <div className={styles.detailContainer}>
@@ -117,7 +109,7 @@ const Account = ({ profileApiUrl = "/profile/" }) => {
           {avatar ? (
             <img
               src={avatar}
-              alt={`${profile.display_name}'s avatar`}
+              alt={`${profile.full_name}'s avatar`}
               className={styles.avatar}
             />
           ) : (
@@ -127,7 +119,7 @@ const Account = ({ profileApiUrl = "/profile/" }) => {
 
         <div className={styles.profileMeta}>
           <div className={styles.nameRow}>
-            <h1 className={styles.displayName}>{profile.display_name}</h1>
+            <h1 className={styles.displayName}>{profile.full_name}</h1>
             {isSelf && (
               <button
                 className={styles.editBtn}
@@ -137,7 +129,10 @@ const Account = ({ profileApiUrl = "/profile/" }) => {
               </button>
             )}
           </div>
-          <p className={styles.username}>@{profile.username}</p>
+          {/* optionally show email or date_joined */}
+          <p className={styles.secondaryInfo}>
+            Member since {getReadableTime(profile.date_joined)}
+          </p>
 
           <div className={styles.statsBar}>
             <div className={styles.statItem}>
@@ -162,7 +157,7 @@ const Account = ({ profileApiUrl = "/profile/" }) => {
       <section className={styles.articlesSection}>
         <div className={styles.sectionHeader}>
           <h2>
-            <FaRegNewspaper /> Articles by {profile.display_name}
+            <FaRegNewspaper /> Articles by {profile.full_name}
           </h2>
         </div>
 
@@ -173,63 +168,60 @@ const Account = ({ profileApiUrl = "/profile/" }) => {
           </div>
         ) : (
           <div className={styles.postsGrid}>
-            {profile.posts.map((post) => {
-              const postCover = getAssetUrl(post.post_img);
-              return (
-                <div
-                  key={post.id}
-                  className={styles.postCard}
-                  onClick={() => navigate(`/blog/post/${post.id}`)}
-                >
-                  {postCover && (
-                    <div className={styles.cardImageFrame}>
-                      <img src={postCover} alt={post.post_title} />
-                    </div>
+            {profile.posts.map((post) => (
+              <div
+                key={post.id}
+                className={styles.postCard}
+                onClick={() => navigate(`/blog/post/${post.id}`)}
+              >
+                {post.post_img && (
+                  <div className={styles.cardImageFrame}>
+                    <img src={post.post_img} alt={post.post_title} />
+                  </div>
+                )}
+
+                <div className={styles.cardContent}>
+                  {post.post_category && (
+                    <span className={styles.categoryBadge}>
+                      {post.post_category}
+                    </span>
                   )}
 
-                  <div className={styles.cardContent}>
-                    {post.post_category && (
-                      <span className={styles.categoryBadge}>
-                        {post.post_category}
+                  <h3
+                    className={styles.cardTitle}
+                    style={
+                      post.post_title_color
+                        ? { color: post.post_title_color }
+                        : {}
+                    }
+                  >
+                    {post.post_title}
+                  </h3>
+
+                  <p className={styles.cardExcerpt}>
+                    {post.post_body?.slice(0, 110)}
+                    {post.post_body?.length > 110 ? "..." : ""}
+                  </p>
+
+                  <div className={styles.cardFooter}>
+                    <span className={styles.timestamp}>
+                      {getReadableTime(post.timestamp)}
+                    </span>
+
+                    <div className={styles.cardMetrics}>
+                      <span>
+                        <FaHeart className={styles.heartIcon} />{" "}
+                        {formatCount(post.like)}
                       </span>
-                    )}
-
-                    <h3
-                      className={styles.cardTitle}
-                      style={
-                        post.post_title_color
-                          ? { color: post.post_title_color }
-                          : {}
-                      }
-                    >
-                      {post.post_title}
-                    </h3>
-
-                    <p className={styles.cardExcerpt}>
-                      {post.post_body?.slice(0, 110)}
-                      {post.post_body?.length > 110 ? "..." : ""}
-                    </p>
-
-                    <div className={styles.cardFooter}>
-                      <span className={styles.timestamp}>
-                        {getReadableTime(post.timestamp)}
+                      <span>
+                        <FaComment className={styles.commentIcon} />{" "}
+                        {post.comments_count || 0}
                       </span>
-
-                      <div className={styles.cardMetrics}>
-                        <span>
-                          <FaHeart className={styles.heartIcon} />{" "}
-                          {formatCount(post.like)}
-                        </span>
-                        <span>
-                          <FaComment className={styles.commentIcon} />{" "}
-                          {post.comments_count || 0}
-                        </span>
-                      </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
       </section>

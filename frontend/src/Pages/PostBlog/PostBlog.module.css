@@ -1,6 +1,21 @@
 .PostBlogContainer {
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    padding-top: 2em;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding-top: 2em;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-secondary);
+}
+
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-error-text);
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 8px;
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { FaBars, FaPlus } from "react-icons/fa";
 import {
   MdArticle,
@@ -10,14 +10,11 @@ import {
 } from "react-icons/md";
 
 import styles from "./BlogLayout.module.css";
-import Logo from "../../assets/logo.png";
-import useAuth from "../../hooks/useAuth";
-import UserContext from "../../context/UserContext";
+import fallbackLogo from "../../assets/logo.png";
 import LogoutModal from "../../components/LogoutModal/LogoutModal";
-import { useAxios } from "../../hooks/useAxios";
 
-// Base API URL from environment variables
-const API_BASE = import.meta.env.VITE_API_URL;
+import { useUser } from "../../Context/UserContext";
+import { useSiteInfo } from "../../Context/SiteInfoContext";
 
 const BlogLayout = () => {
   const navigate = useNavigate();
@@ -30,64 +27,19 @@ const BlogLayout = () => {
   });
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [avatar, setAvatar] = useState(null);
-  const [displayName, setDisplayName] = useState("");
-  const [profile, setProfile] = useState({});
 
-  // ---- Use relative URLs – the base comes from VITE_API_URL ----
-  const {
-    isAuthenticated,
-    loading: authLoading,
-    user,
-  } = useAuth(
-    "/token/check/", // was absolute
-    "/token/refresh/", // was absolute
-  );
-
-  // Fetch profile only when authenticated and auth loading is done
-  const {
-    response: profileData,
-    loading: profileLoading,
-    error: profileError,
-  } = useAxios({
-    method: "GET",
-    url: "/profile/",
-    isProtected: true,
-    run: isAuthenticated && !authLoading,
-  });
-
-  // Update local state when profile data arrives
-  useEffect(() => {
-    if (profileData) {
-      console.log(profileData);
-      setAvatar(profileData.avatar);
-      setDisplayName(profileData.display_name);
-      setProfile(profileData);
-    }
-  }, [profileData]);
+  // Destructure user context (new shape)
+  const { user, loading } = useUser();
+  const { siteInfo } = useSiteInfo();
 
   // Redirect unauthenticated users
   useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated) {
+    if (!loading && !user?.isAuthenticated) {
       navigate("/login");
     }
-  }, [authLoading, isAuthenticated, navigate]);
+  }, [loading, user, navigate]);
 
-  // ---- Helper to build full image URLs ----
-  const getAssetUrl = (path) => {
-    if (!path) return null;
-    // if (path.startsWith("http://") || path.startsWith("https://")) {
-    //   return path;
-    // }
-    // // Use the same base as the hook (or fallback)
-    // const base = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8000";
-    // const newPath = path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
-
-    // return newPath;
-    return path;
-  };
-
+  // Determine current page for active sidebar item
   let currentPage = "blog";
   if (path.includes("/post")) currentPage = "post";
   else if (path.includes("/add-post")) currentPage = "add-post";
@@ -103,21 +55,15 @@ const BlogLayout = () => {
   };
 
   const handleNavClick = (route) => {
+    // Close sidebar on mobile
     if (window.innerWidth <= 768) {
       setIsSidebarOpen(false);
       localStorage.setItem("sidebarOpen", JSON.stringify(false));
     }
-    if (route) {
-      navigate(route);
-    }
+    if (route) navigate(route);
   };
 
-  const handleConfirmLogout = () => {
-    setShowLogoutModal(false);
-    navigate("/logout");
-  };
-
-  if (authLoading) {
+  if (loading) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>
@@ -126,7 +72,11 @@ const BlogLayout = () => {
     );
   }
 
-  const avatarUrl = getAssetUrl(avatar);
+  // Dynamic values from new user object
+  const avatarUrl = user?.profilePicture; // full Cloudinary URL
+  const displayName = user?.fullName || user?.firstName || "Account";
+  const brandName = siteInfo?.siteName || "BlogNet";
+  const logoUrl = siteInfo?.siteLogoUrl || fallbackLogo;
 
   return (
     <div className={styles.blogLayoutContainer}>
@@ -141,8 +91,12 @@ const BlogLayout = () => {
             <FaBars />
           </button>
           <div className={styles.brand} onClick={() => handleNavClick("/blog")}>
-            <img src={Logo} alt="BlogNet Logo" className={styles.logoImg} />
-            <span className={styles.brandTitle}>BlogNet</span>
+            <img
+              src={logoUrl}
+              alt={`${brandName} Logo`}
+              className={styles.logoImg}
+            />
+            <span className={styles.brandTitle}>{brandName}</span>
           </div>
         </div>
 
@@ -150,9 +104,7 @@ const BlogLayout = () => {
           className={styles.right}
           onClick={() => handleNavClick("/blog/account")}
         >
-          <span className={styles.username}>
-            {displayName || user?.username || "Account"}
-          </span>
+          <span className={styles.username}>{displayName}</span>
           <div className={styles.avatarWrapper}>
             {avatarUrl ? (
               <img
@@ -162,7 +114,7 @@ const BlogLayout = () => {
               />
             ) : (
               <div className={styles.avatarFallback}>
-                {(displayName || user?.username || "U")[0].toUpperCase()}
+                {displayName[0].toUpperCase()}
               </div>
             )}
           </div>
@@ -174,7 +126,7 @@ const BlogLayout = () => {
         {isSidebarOpen && (
           <div
             className={styles.mobileBackdrop}
-            onClick={() => handleNavClick()}
+            onClick={() => handleNavClick()} // closes sidebar
           />
         )}
 
@@ -231,7 +183,7 @@ const BlogLayout = () => {
 
               <li
                 onClick={() => {
-                  handleNavClick();
+                  handleNavClick(); // close sidebar if open
                   setShowLogoutModal(true);
                 }}
                 className={styles.logoutItem}
@@ -244,16 +196,14 @@ const BlogLayout = () => {
         </aside>
 
         <main className={styles.content}>
-          <UserContext.Provider value={{ user, profile }}>
-            <Outlet />
-          </UserContext.Provider>
+          <Outlet />
         </main>
       </div>
 
+      {/* LogoutModal – now self‑contained, no onConfirm needed */}
       <LogoutModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        onConfirm={handleConfirmLogout}
       />
     </div>
   );

@@ -8,7 +8,8 @@ import {
   MdPalette,
   MdCategory,
 } from "react-icons/md";
-import { useAxios } from "../../hooks/useAxios"; // adjust import
+import api from "../../hooks/api";
+import { usePageTitle } from "../../Context/PageTitleContext";
 import styles from "./AddPost.module.css";
 import defaultImg from "../../assets/defaultImg.png";
 
@@ -22,15 +23,17 @@ const ACCENT_COLORS = [
 ];
 
 const AddPost = ({
-  addPostUrl = "/blog/add-post/", // relative – hook prepends base
-  categoriesUrl = "/blog/categories/", // relative
+  addPostUrl = "/blog/add-post/",
+  categoriesUrl = "/blog/categories/",
   initialCategories = [],
 }) => {
   const postImgRef = useRef();
   const navigate = useNavigate();
+  const { updatePageTitle } = usePageTitle();
 
   const [activeTab, setActiveTab] = useState("edit");
   const [categories, setCategories] = useState(initialCategories);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
@@ -40,66 +43,43 @@ const AddPost = ({
   const [previewUrl, setPreviewUrl] = useState(null);
 
   const [errorMsg, setErrorMsg] = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
 
-  // ---- 1. Fetch categories ----
-  const {
-    response: categoriesResponse,
-    loading: categoriesLoading,
-    error: categoriesError,
-  } = useAxios({
-    method: "GET",
-    url: categoriesUrl,
-    isProtected: true,
-    run: true,
-  });
-
-  // ---- 2. Submit post ----
-  const [submitPayload, setSubmitPayload] = useState(null);
-  const {
-    response: submitResponse,
-    loading: submitLoading,
-    error: submitError,
-  } = useAxios({
-    method: "POST",
-    url: addPostUrl,
-    data: submitPayload,
-    isProtected: true,
-    run: submitPayload !== null,
-  });
-
-  // ---- Handle categories response ----
   useEffect(() => {
-    if (categoriesResponse) {
-      let fetchedData = categoriesResponse;
-      if (Array.isArray(fetchedData) && fetchedData.length > 0) {
-        setCategories(fetchedData);
-        const initialVal = getCatValue(fetchedData[0]);
-        setCategory(initialVal);
+    updatePageTitle("Create Article");
+  }, [updatePageTitle]);
+
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await api.get(categoriesUrl);
+        const fetchedData = response.data;
+        if (Array.isArray(fetchedData) && fetchedData.length > 0) {
+          setCategories(fetchedData);
+          setCategory(getCatValue(fetchedData[0]));
+        }
+      } catch (err) {
+        console.error("Error loading categories:", err);
+      } finally {
+        setCategoriesLoading(false);
       }
-    }
-    if (categoriesError) {
-      console.error("Error loading categories:", categoriesError);
-    }
-  }, [categoriesResponse, categoriesError]);
+    };
 
-  // ---- Handle submit response ----
+    fetchCategories();
+  }, [categoriesUrl]);
+
+  // Object URL preview lifecycle
   useEffect(() => {
-    if (submitResponse) {
-      navigate("/blog/post");
-      setSubmitPayload(null);
+    if (!file) {
+      setPreviewUrl(null);
+      return;
     }
-  }, [submitResponse, navigate]);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
 
-  // ---- Handle submit error ----
-  useEffect(() => {
-    if (submitError) {
-      console.error("Error creating post:", submitError);
-      setErrorMsg("Failed to create post. Please try again.");
-      setSubmitPayload(null);
-    }
-  }, [submitError]);
-
-  // ---- Helpers for category value/label ----
   const getCatValue = (item) => {
     if (!item) return "";
     if (typeof item === "object") {
@@ -122,18 +102,6 @@ const AddPost = ({
     return found ? getCatLabel(found) : category;
   };
 
-  // ---- Object URL preview lifecycle ----
-  useEffect(() => {
-    if (!file) {
-      setPreviewUrl(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file]);
-
-  // ---- Event handlers ----
   const handleCategoryClick = (val) => {
     setCategory(String(val));
   };
@@ -158,6 +126,7 @@ const AddPost = ({
     }
 
     setErrorMsg("");
+    setSubmitLoading(true);
 
     const formData = new FormData();
     formData.append("post_title", postTitle);
@@ -166,11 +135,17 @@ const AddPost = ({
     formData.append("post_title_color", color);
     formData.append("post_category", category);
 
-    // Trigger the POST request
-    setSubmitPayload(formData);
+    try {
+      await api.post(addPostUrl, formData);
+      navigate("/blog/post");
+    } catch (err) {
+      console.error("Error creating post:", err);
+      setErrorMsg("Failed to create post. Please try again.");
+    } finally {
+      setSubmitLoading(false);
+    }
   };
 
-  // ---- Render ----
   return (
     <div className={styles.editorContainer}>
       <header className={styles.editorHeader}>
@@ -292,11 +267,15 @@ const AddPost = ({
                             isSelected ? styles.activePill : ""
                           }`}
                           style={{
-                            backgroundColor: isSelected ? "#2563EB" : "#ffffff",
-                            color: isSelected ? "#ffffff" : "#333333",
+                            backgroundColor: isSelected
+                              ? "var(--color-info-text)"
+                              : "var(--bg-primary)",
+                            color: isSelected
+                              ? "var(--bg-primary)"
+                              : "var(--text-primary)",
                             border: isSelected
-                              ? "1px solid #2563EB"
-                              : "1px solid #ccc",
+                              ? "1px solid var(--color-info-text)"
+                              : "1px solid var(--border-input)",
                             cursor: "pointer",
                             pointerEvents: "auto",
                           }}

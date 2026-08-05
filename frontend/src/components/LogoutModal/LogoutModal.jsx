@@ -1,8 +1,12 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { MdLogout } from "react-icons/md";
+import { useUser } from "../../Context/UserContext";
 import styles from "./LogoutModal.module.css";
 
-const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
+const LogoutModal = ({ isOpen, onClose }) => {
+  const { logout } = useUser();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   // Close modal on Escape key press
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -13,6 +17,19 @@ const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout(); // calls /user/logout/ and clears user state
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Optionally show an error message
+    } finally {
+      setIsLoggingOut(false);
+      onClose();
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -35,15 +52,21 @@ const LogoutModal = ({ isOpen, onClose, onConfirm }) => {
         </p>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose}>
+          <button
+            type="button"
+            className={styles.cancelBtn}
+            onClick={onClose}
+            disabled={isLoggingOut}
+          >
             Cancel
           </button>
           <button
             type="button"
             className={styles.confirmBtn}
-            onClick={onConfirm}
+            onClick={handleLogout}
+            disabled={isLoggingOut}
           >
-            Log Out
+            {isLoggingOut ? "Logging out..." : "Log Out"}
           </button>
         </div>
       </div>

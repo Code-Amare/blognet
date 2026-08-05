@@ -10,14 +10,23 @@ import Logout from "./Pages/Logout/Logout";
 
 import ForgotPassword from "./Pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "./Pages/ResetPassword/ResetPassword";
+import { useUser } from "./Context/UserContext";
 
 function App() {
+  const navigate = useNavigate();
+  const { isAuthenticated, loading } = useUser();
 
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!loading && isAuthenticated && !location.pathname.startsWith("/blog")) {
+      navigate("/blog", { replace: true });
+    }
+  }, [isAuthenticated, loading, location.pathname, navigate]);
 
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-
 
       <Route path="/register" element={<Register />} />
 

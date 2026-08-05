@@ -1,29 +1,19 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FaHeart, FaRegHeart, FaArrowRight } from "react-icons/fa";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import numeral from "numeral";
 import { Link } from "react-router-dom";
-
-import UserContext from "../../context/UserContext";
+import { useUser } from "../../Context/UserContext";
 import styles from "./Post.module.css";
 
 const MAX_BODY_LENGTH = 120;
-
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "";
 const WS_URL = import.meta.env.VITE_WS_URL;
 
 const Post = ({ post }) => {
-  const { user } = useContext(UserContext);
+  const { user } = useUser();
 
   const [likeCount, setLikeCount] = useState(post?.like ?? 0);
   const [isLiked, setIsLiked] = useState(Boolean(post?.is_liked_by_me));
-
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -31,32 +21,16 @@ const Post = ({ post }) => {
     setIsLiked(Boolean(post?.is_liked_by_me));
   }, [post?.like, post?.is_liked_by_me]);
 
-  const formatLikes = (count) => {
-    return numeral(count).format(count < 1000 ? "0a" : "0.0a");
-  };
+  const formatLikes = (count) =>
+    numeral(count).format(count < 1000 ? "0a" : "0.0a");
 
   const getReadableTime = (timestamp) => {
     if (!timestamp) return "";
-
     try {
-      return formatDistanceToNow(parseISO(timestamp), {
-        addSuffix: true,
-      });
+      return formatDistanceToNow(parseISO(timestamp), { addSuffix: true });
     } catch {
       return "";
     }
-  };
-
-  const getAvatarUrl = (avatarPath) => {
-    if (!avatarPath) return null;
-
-    // Cloudinary or any absolute URL
-    if (/^https?:\/\//.test(avatarPath)) {
-      return avatarPath;
-    }
-
-    // Relative URL from Django
-    return `${MEDIA_URL}${avatarPath}`;
   };
 
   const truncateText = (text, maxLength) => {
@@ -65,26 +39,28 @@ const Post = ({ post }) => {
     return `${text.slice(0, maxLength).trim()}...`;
   };
 
-  const avatar = getAvatarUrl(post?.profile?.avatar);
+  // ✅ Extract author name from nested user object
+  const authorDisplayName =
+    post?.user?.full_name ||
+    [post?.user?.first_name, post?.user?.last_name].filter(Boolean).join(" ") ||
+    "Anonymous";
+
+  // ✅ Avatar from user.profile_picture
+  const avatar = post?.user?.profile_picture || null;
+
   const readableTime = getReadableTime(post?.timestamp);
   const truncatedBody = truncateText(post?.post_body, MAX_BODY_LENGTH);
-
-  const authorDisplayName =
-    post?.profile?.display_name || post?.user || "Anonymous";
-
   const initialLetter = authorDisplayName.charAt(0).toUpperCase();
 
   const onMessage = useCallback(
     (event) => {
       try {
         const data = JSON.parse(event.data);
-
         if (data.post_id !== post?.id) return;
 
         if (typeof data.like_count === "number") {
           setLikeCount(data.like_count);
         }
-
         if (
           data.username === user?.username &&
           typeof data.is_liked_by_me === "boolean"
@@ -99,36 +75,19 @@ const Post = ({ post }) => {
   );
 
   useEffect(() => {
-    // Skip websocket if URL isn't configured
     if (!WS_URL) return;
-
     const socket = new WebSocket(`${WS_URL}/like/`);
-
     socketRef.current = socket;
-
-    socket.onopen = () => {
+    socket.onopen = () =>
       console.log(`Connected to like socket for post ${post?.id}`);
-    };
-
     socket.onmessage = onMessage;
-
-    socket.onerror = (err) => {
-      console.error("WebSocket error:", err);
-    };
-
-    socket.onclose = () => {
-      console.log("Like socket closed.");
-    };
-
-    return () => {
-      socket.close();
-    };
+    socket.onerror = (err) => console.error("WebSocket error:", err);
+    socket.onclose = () => console.log("Like socket closed.");
+    return () => socket.close();
   }, [onMessage, post?.id]);
 
   const handleLikePost = (id) => {
     const nextIsLiked = !isLiked;
-
-    // Optimistic update
     setIsLiked(nextIsLiked);
     setLikeCount((prev) => (nextIsLiked ? prev + 1 : Math.max(prev - 1, 0)));
 
@@ -162,7 +121,6 @@ const Post = ({ post }) => {
 
           <div className={styles.authorMeta}>
             <h1 className={styles.authorName}>{authorDisplayName}</h1>
-
             <span className={styles.timestamp}>{readableTime}</span>
           </div>
         </div>
@@ -178,14 +136,12 @@ const Post = ({ post }) => {
           ) : (
             <FaRegHeart className={styles.heartIcon} />
           )}
-
           <span>{formatLikes(likeCount)}</span>
         </button>
       </header>
 
       <div className={styles.body}>
         <h2 className={styles.title}>{post?.post_title}</h2>
-
         <p className={styles.description}>{truncatedBody}</p>
       </div>
 

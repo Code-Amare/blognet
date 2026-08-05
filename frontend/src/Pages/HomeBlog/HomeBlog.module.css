@@ -5,7 +5,7 @@
   width: 100%;
   min-height: 100vh;
   padding: 2rem 1rem;
-  background-color: #f8fafc;
+  background-color: var(--bg-secondary);
   box-sizing: border-box;
 }
 
@@ -28,23 +28,22 @@
   gap: 1.5rem;
 }
 
-/* Empty State Styling */
 .emptyState {
-  background: #ffffff;
-  border: 1px dashed #cbd5e1;
+  background: var(--bg-primary);
+  border: 1px dashed var(--border-input);
   border-radius: 16px;
   padding: 3rem 1.5rem;
   text-align: center;
   width: 100%;
   box-sizing: border-box;
-  color: #64748b;
+  color: var(--text-secondary);
   margin-top: 2rem;
 }
 
 .emptyState h3 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
 }
 
@@ -53,26 +52,24 @@
   margin: 0;
 }
 
-/* Error Banner */
 .errorState {
   width: 100%;
   padding: 1rem;
-  background-color: #fef2f2;
-  border: 1px solid #fca5a5;
-  color: #ef4444;
+  background-color: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  color: var(--color-error-text);
   border-radius: 12px;
   text-align: center;
   font-size: 0.9rem;
   font-weight: 500;
   margin-top: 1rem;
-  box-sizing: border-border-box;
+  box-sizing: border-box;
 }
 
-/* End of Feed Indicator */
 .endOfFeed {
   padding: 1.5rem 0;
   text-align: center;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.85rem;
   font-weight: 500;
 }

@@ -7,6 +7,7 @@ import api from "../../hooks/api";
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
+import { usePageTitle } from "../../Context/PageTitleContext";
 
 const STATES = [
   { visualSrc: FoodVisual, color: "#FF5252" },
@@ -22,12 +23,14 @@ const Login = ({ interval = 8000 }) => {
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [index, setIndex] = useState(0);
   const navigate = useNavigate();
+  const { updatePageTitle } = usePageTitle();
 
   useEffect(() => {
     STATES.forEach((state) => {
       const img = new Image();
       img.src = state.visualSrc;
     });
+    updatePageTitle("Login");
   }, []);
 
   useEffect(() => {

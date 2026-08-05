@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import numeral from "numeral";
@@ -18,8 +12,9 @@ import {
   FaComment,
 } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
-import UserContext from "../../context/UserContext";
-import { useAxios } from "../../hooks/useAxios";
+import api from "../../hooks/api";
+import { useUser } from "../../Context/UserContext";
+import { usePageTitle } from "../../Context/PageTitleContext";
 import styles from "./PostDetail.module.css";
 
 const PostDetail = ({
@@ -28,7 +23,8 @@ const PostDetail = ({
 }) => {
   const { postId } = useParams();
   const navigate = useNavigate();
-  const { user } = useContext(UserContext);
+  const { user } = useUser();
+  const { updatePageTitle } = usePageTitle();
 
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,106 +40,41 @@ const PostDetail = ({
 
   const socketRef = useRef(null);
 
-  // ---- Fetch Post Detail ----
-  const {
-    response: postResponse,
-    loading: postLoading,
-    error: postError,
-  } = useAxios({
-    method: "GET",
-    url: `${postDetailUrl}${postId}/`,
-    isProtected: true,
-    run: !!postId,
-  });
-
-  // ---- Fetch Comments ----
-  const {
-    response: commentsResponse,
-    loading: commentsLoading,
-    error: commentsError,
-  } = useAxios({
-    method: "GET",
-    url: `${commentsUrl}${postId}/`,
-    isProtected: true,
-    run: !!postId,
-  });
-
-  // ---- Submit Comment ----
-  const [commentPayload, setCommentPayload] = useState(null);
-  const {
-    response: commentResponse,
-    loading: commentSubmitting,
-    error: commentError,
-  } = useAxios({
-    method: "POST",
-    url: `${commentsUrl}${postId}/`,
-    data: commentPayload,
-    isProtected: true,
-    run: commentPayload !== null,
-  });
-
-  // ---- Handle post response ----
+  // ---- Set page title ----
   useEffect(() => {
-    if (postResponse) {
-      const data = postResponse;
-      const postData = data?.post || data;
-      setPost(postData);
-      setLikeCount(postData?.like ?? 0);
-      setIsLiked(Boolean(postData?.is_liked_by_me));
+    if (post?.post_title) {
+      updatePageTitle(post.post_title);
+    } else {
+      updatePageTitle("Post Detail");
     }
-  }, [postResponse]);
+  }, [post, updatePageTitle]);
 
-  // ---- Handle post error ----
-  useEffect(() => {
-    if (postError) {
-      console.error("Error loading article:", postError);
-      setError("Failed to load article. It may have been removed.");
-    }
-  }, [postError]);
-
-  // ---- Handle comments response ----
-  useEffect(() => {
-    if (commentsResponse) {
-      const parsed = extractCommentsArray(commentsResponse);
-      setComments(parsed);
-    }
-  }, [commentsResponse]);
-
-  // ---- Handle comments error ----
-  useEffect(() => {
-    if (commentsError) {
-      console.error("Error loading comments:", commentsError);
-    }
-  }, [commentsError]);
-
-  // ---- Handle comment submission response ----
-  useEffect(() => {
-    if (commentResponse) {
-      setComments((prev) => [commentResponse, ...prev]);
-      setNewComment("");
-      setCommentPayload(null);
-      setIsSubmittingComment(false);
-    }
-  }, [commentResponse]);
-
-  // ---- Handle comment submission error ----
-  useEffect(() => {
-    if (commentError) {
-      console.error("Error submitting comment:", commentError);
-      setCommentPayload(null);
-      setIsSubmittingComment(false);
-    }
-  }, [commentError]);
-
-  // ---- Combine loading state ----
+  // ---- Fetch post and comments ----
   useEffect(() => {
     if (!postId) return;
-    if (!postLoading && !commentsLoading) {
-      setLoading(false);
-    }
-  }, [postLoading, commentsLoading, postId]);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [postRes, commentsRes] = await Promise.all([
+          api.get(`${postDetailUrl}${postId}/`),
+          api.get(`${commentsUrl}${postId}/`),
+        ]);
+        const postData = postRes.data?.post || postRes.data;
+        setPost(postData);
+        setLikeCount(postData?.like ?? 0);
+        setIsLiked(Boolean(postData?.is_liked_by_me));
+        setComments(extractCommentsArray(commentsRes.data));
+      } catch (err) {
+        console.error("Failed to load article:", err);
+        setError("Failed to load article. It may have been removed.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [postId, postDetailUrl, commentsUrl]);
 
-  // ---- WebSocket like sync ----
+  // ---- WebSocket for likes ----
   const onMessage = useCallback(
     (event) => {
       try {
@@ -185,12 +116,10 @@ const PostDetail = ({
     };
   }, [postId, onMessage]);
 
-  // ---- ✅ FIXED: Keep /api, do NOT remove it ----
+  // ---- Helpers ----
   const getAssetUrl = (path) => {
     if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
     const mediaBase = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8001";
     return path.startsWith("/")
       ? `${mediaBase}${path}`
@@ -217,6 +146,23 @@ const PostDetail = ({
     }
   };
 
+  // Helper to get display name from a user object (nested)
+  const getUserDisplayName = (userObj) => {
+    if (!userObj) return "Anonymous";
+    return (
+      userObj.full_name ||
+      [userObj.first_name, userObj.last_name].filter(Boolean).join(" ") ||
+      userObj.username ||
+      "Anonymous"
+    );
+  };
+
+  // Helper to get profile picture from a user object
+  const getUserAvatar = (userObj) => {
+    if (!userObj) return null;
+    return userObj.profile_picture || userObj.avatar || null;
+  };
+
   // ---- Actions ----
   const handleLikePost = () => {
     const nextIsLiked = !isLiked;
@@ -234,15 +180,23 @@ const PostDetail = ({
     }
   };
 
-  const handleAddComment = (e) => {
+  const handleAddComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
     setIsSubmittingComment(true);
-    setCommentPayload({
-      comment: newComment,
-      text: newComment,
-      post: Number(postId),
-    });
+    try {
+      const response = await api.post(`${commentsUrl}${postId}/`, {
+        comment: newComment,
+        text: newComment,
+        post: Number(postId),
+      });
+      setComments((prev) => [response.data, ...prev]);
+      setNewComment("");
+    } catch (err) {
+      console.error("Error submitting comment:", err);
+    } finally {
+      setIsSubmittingComment(false);
+    }
   };
 
   // ---- Render ----
@@ -267,12 +221,16 @@ const PostDetail = ({
     );
   }
 
-  const isAuthor = user?.id === post?.profile?.user?.id;
-
-  const avatar = getAssetUrl(post?.profile?.avatar);
-  const coverImage = getAssetUrl(post?.post_img);
-  const authorName = post?.profile?.display_name || post?.user || "Anonymous";
+  // ---- Extract author info using the new nested user structure ----
+  const authorUser = post?.user; // nested user object from UserSerializer
+  const authorName = getUserDisplayName(authorUser);
+  const authorAvatar = getUserAvatar(authorUser);
   const authorInitial = authorName.charAt(0).toUpperCase();
+
+  // Check if current user is the author (compare IDs)
+  const isAuthor = user?.id === authorUser?.id;
+
+  const coverImage = getAssetUrl(post?.post_img);
 
   return (
     <article className={styles.detailContainer}>
@@ -332,9 +290,9 @@ const PostDetail = ({
         <div className={styles.authorBar}>
           <div className={styles.authorMeta}>
             <div className={styles.authorAvatarWrapper}>
-              {avatar ? (
+              {authorAvatar ? (
                 <img
-                  src={avatar}
+                  src={getAssetUrl(authorAvatar)}
                   alt={`${authorName} avatar`}
                   className={styles.avatar}
                 />
@@ -390,14 +348,10 @@ const PostDetail = ({
           />
           <button
             type="submit"
-            disabled={
-              isSubmittingComment || commentSubmitting || !newComment.trim()
-            }
+            disabled={isSubmittingComment || !newComment.trim()}
             className={styles.submitCommentBtn}
           >
-            {isSubmittingComment || commentSubmitting
-              ? "Posting..."
-              : "Post Comment"}
+            {isSubmittingComment ? "Posting..." : "Post Comment"}
           </button>
         </form>
         <div className={styles.commentList}>
@@ -407,16 +361,18 @@ const PostDetail = ({
             </p>
           ) : (
             comments.map((comment, idx) => {
-              const commenterAvatar = getAssetUrl(comment?.commenter?.avatar);
-              const commenterName =
-                comment?.commenter?.display_name || "Anonymous";
+              // Extract commenter info – assume comment.user is the nested user object
+              const commenterUser = comment?.user || comment?.commenter;
+              const commenterName = getUserDisplayName(commenterUser);
+              const commenterAvatar = getUserAvatar(commenterUser);
               const commenterInitial = commenterName.charAt(0).toUpperCase();
+
               return (
                 <div key={comment?.id || idx} className={styles.commentItem}>
                   <div className={styles.commentAvatarWrapper}>
                     {commenterAvatar ? (
                       <img
-                        src={commenterAvatar}
+                        src={getAssetUrl(commenterAvatar)}
                         alt={`${commenterName} avatar`}
                         className={styles.commentAvatar}
                       />

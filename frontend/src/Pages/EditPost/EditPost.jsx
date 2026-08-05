@@ -8,7 +8,8 @@ import {
   MdPalette,
   MdCategory,
 } from "react-icons/md";
-import { useAxios } from "../../hooks/useAxios";
+import api from "../../hooks/api"; // ✅ replaced useAxios
+import { usePageTitle } from "../../Context/PageTitleContext"; // ✅ added
 import styles from "./EditPost.module.css";
 import defaultImg from "../../assets/defaultImg.png";
 
@@ -25,9 +26,11 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
   const { postId } = useParams();
   const navigate = useNavigate();
   const postImgRef = useRef();
+  const { updatePageTitle } = usePageTitle();
 
   const [activeTab, setActiveTab] = useState("edit");
   const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
   const [postTitle, setPostTitle] = useState("");
   const [postBody, setPostBody] = useState("");
@@ -36,111 +39,83 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(null);
-
+  const [postLoading, setPostLoading] = useState(true);
+  const [updateLoading, setUpdateLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // ---- Set page title ----
+  useEffect(() => {
+    updatePageTitle("Edit Post");
+  }, [updatePageTitle]);
+
   // Fetch categories
-  const {
-    response: categoriesResponse,
-    loading: categoriesLoading,
-    error: categoriesError,
-  } = useAxios({
-    method: "GET",
-    url: categoriesUrl,
-    isProtected: true,
-    run: true,
-  });
-
-  // Fetch existing post – using the same endpoint as PostDetail
-  const {
-    response: postResponse,
-    loading: postLoading,
-    error: postError,
-  } = useAxios({
-    method: "GET",
-    url: `/blog/post/${postId}/`,
-    isProtected: true,
-    run: !!postId,
-  });
-
-  // Update post (PATCH) – using the dedicated edit endpoint
-  const [updatePayload, setUpdatePayload] = useState(null);
-  const {
-    response: updateResponse,
-    loading: updateLoading,
-    error: updateError,
-  } = useAxios({
-    method: "PATCH",
-    url: `/blog/edit-post/${postId}/`,
-    data: updatePayload,
-    isProtected: true,
-    run: updatePayload !== null,
-  });
-
-  // Handle categories
   useEffect(() => {
-    if (categoriesResponse) {
-      const fetchedData = Array.isArray(categoriesResponse)
-        ? categoriesResponse
-        : categoriesResponse.results || [];
-      if (fetchedData.length > 0) {
+    const fetchCategories = async () => {
+      try {
+        const response = await api.get(categoriesUrl);
+        const fetchedData = Array.isArray(response.data)
+          ? response.data
+          : response.data.results || [];
         setCategories(fetchedData);
+      } catch (error) {
+        console.error("Error loading categories:", error);
+      } finally {
+        setCategoriesLoading(false);
       }
-    }
-    if (categoriesError) {
-      console.error("Error loading categories:", categoriesError);
-    }
-  }, [categoriesResponse, categoriesError]);
+    };
+    fetchCategories();
+  }, [categoriesUrl]);
 
-  // Handle post data
+  // Fetch existing post
   useEffect(() => {
-    if (postResponse) {
-      const raw = postResponse;
-      const postData = raw?.post || raw;
-      setPostTitle(postData.post_title || "");
-      setPostBody(postData.post_body || "");
-      setColor(postData.post_title_color || "#000000");
+    if (!postId) return;
+    const fetchPost = async () => {
+      try {
+        const response = await api.get(`/blog/post/${postId}/`);
+        const raw = response.data;
+        const postData = raw?.post || raw;
+        setPostTitle(postData.post_title || "");
+        setPostBody(postData.post_body || "");
+        setColor(postData.post_title_color || "#000000");
 
-      const catString = postData.post_category;
-      if (catString && categories.length > 0) {
-        const matched = categories.find((c) => getCatValue(c) === catString);
-        setCategory(matched ? getCatValue(matched) : catString);
-      } else if (catString) {
-        setCategory(catString);
+        const catString = postData.post_category;
+        if (catString && categories.length > 0) {
+          const matched = categories.find((c) => getCatValue(c) === catString);
+          setCategory(matched ? getCatValue(matched) : catString);
+        } else if (catString) {
+          setCategory(catString);
+        }
+
+        if (postData.post_img) {
+          const imgUrl = getAssetUrl(postData.post_img);
+          setExistingImageUrl(imgUrl);
+          setPreviewUrl(imgUrl);
+        }
+      } catch (error) {
+        console.error("Failed to load post:", error);
+        setErrorMsg("Failed to load post.");
+      } finally {
+        setPostLoading(false);
       }
+    };
+    fetchPost();
+  }, [postId, categories]);
 
-      if (postData.post_img) {
-        const imgUrl = getAssetUrl(postData.post_img);
-        setExistingImageUrl(imgUrl);
-        setPreviewUrl(imgUrl);
-      }
-    }
-  }, [postResponse, categories]);
-
-  // Handle update response
+  // Handle image preview
   useEffect(() => {
-    if (updateResponse) {
-      navigate("/blog/post");
-      setUpdatePayload(null);
+    if (!file) {
+      setPreviewUrl(existingImageUrl);
+      return;
     }
-  }, [updateResponse, navigate]);
-
-  // Handle update error
-  useEffect(() => {
-    if (updateError) {
-      console.error("Error updating post:", updateError);
-      setErrorMsg("Failed to update post. Please try again.");
-      setUpdatePayload(null);
-    }
-  }, [updateError]);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file, existingImageUrl]);
 
   // ---- Helper functions ----
-  // ✅ FIXED: Keep /api in the path, don't strip it
   const getAssetUrl = (path) => {
     if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
+    if (path.startsWith("http://") || path.startsWith("https://")) return path;
     const mediaBase = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8001";
     return path.startsWith("/")
       ? `${mediaBase}${path}`
@@ -149,17 +124,15 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
 
   const getCatValue = (item) => {
     if (!item) return "";
-    if (typeof item === "object") {
+    if (typeof item === "object")
       return String(item.value ?? item.id ?? item.name ?? "");
-    }
     return String(item);
   };
 
   const getCatLabel = (item) => {
     if (!item) return "";
-    if (typeof item === "object") {
+    if (typeof item === "object")
       return item.label || item.name || item.title || item.value || "";
-    }
     return String(item);
   };
 
@@ -169,26 +142,11 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     return found ? getCatLabel(found) : category;
   };
 
-  // Handle image preview
-  useEffect(() => {
-    if (!file) {
-      setPreviewUrl(existingImageUrl || null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file, existingImageUrl]);
-
   // ---- Event handlers ----
-  const handleCategoryClick = (val) => {
-    setCategory(String(val));
-  };
+  const handleCategoryClick = (val) => setCategory(String(val));
 
   const handleFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-    }
+    if (e.target.files?.[0]) setFile(e.target.files[0]);
   };
 
   const handleRemoveImage = (e) => {
@@ -199,27 +157,35 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     if (postImgRef.current) postImgRef.current.value = "";
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!postTitle.trim()) {
       setErrorMsg("Please provide a title for your post.");
       return;
     }
-
     setErrorMsg("");
+    setUpdateLoading(true);
 
     const formData = new FormData();
     formData.append("post_title", postTitle);
     formData.append("post_body", postBody);
     if (file) {
-      formData.append("post_img", file);
+      formData.append("post_img_upload", file);
     } else if (existingImageUrl === null && postResponse?.post_img) {
       formData.append("remove_img", "true");
     }
     formData.append("post_title_color", color);
     formData.append("post_category", category);
 
-    setUpdatePayload(formData);
+    try {
+      await api.patch(`/blog/edit-post/${postId}/`, formData);
+      navigate("/blog/post");
+    } catch (error) {
+      console.error("Error updating post:", error);
+      setErrorMsg("Failed to update post. Please try again.");
+    } finally {
+      setUpdateLoading(false);
+    }
   };
 
   // ---- Loading & error states ----
@@ -232,7 +198,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     );
   }
 
-  if (postError || !postResponse) {
+  if (!postId || errorMsg === "Failed to load post.") {
     return (
       <div className={styles.errorContainer}>
         <h2>Post Not Found</h2>
@@ -244,7 +210,6 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     );
   }
 
-  // ---- Render ----
   return (
     <div className={styles.editorContainer}>
       <header className={styles.editorHeader}>
@@ -255,9 +220,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
         <div className={styles.tabGroup}>
           <button
             type="button"
-            className={`${styles.tabBtn} ${
-              activeTab === "edit" ? styles.activeTab : ""
-            }`}
+            className={`${styles.tabBtn} ${activeTab === "edit" ? styles.activeTab : ""}`}
             onClick={() => setActiveTab("edit")}
           >
             <MdEdit />
@@ -265,9 +228,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
           </button>
           <button
             type="button"
-            className={`${styles.tabBtn} ${
-              activeTab === "preview" ? styles.activeTab : ""
-            }`}
+            className={`${styles.tabBtn} ${activeTab === "preview" ? styles.activeTab : ""}`}
             onClick={() => setActiveTab("preview")}
           >
             <MdVisibility />
@@ -362,18 +323,12 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
                         <button
                           key={catVal || idx}
                           type="button"
-                          className={`${styles.pill} ${
-                            isSelected ? styles.activePill : ""
-                          }`}
-                          style={{
-                            backgroundColor: isSelected ? "#2563EB" : "#ffffff",
-                            color: isSelected ? "#ffffff" : "#333333",
-                            border: isSelected
-                              ? "1px solid #2563EB"
-                              : "1px solid #ccc",
-                            cursor: "pointer",
-                            pointerEvents: "auto",
-                          }}
+                          className={`${styles.pill} ${isSelected ? styles.activePill : ""}`}
+                          style={
+                            isSelected
+                              ? undefined // let CSS variables handle it
+                              : undefined
+                          }
                           onClick={() => handleCategoryClick(catVal)}
                         >
                           {catLabel}
@@ -393,9 +348,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
                     <button
                       key={swatch}
                       type="button"
-                      className={`${styles.swatch} ${
-                        color === swatch ? styles.activeSwatch : ""
-                      }`}
+                      className={`${styles.swatch} ${color === swatch ? styles.activeSwatch : ""}`}
                       style={{ backgroundColor: swatch }}
                       onClick={() => setColor(swatch)}
                     />

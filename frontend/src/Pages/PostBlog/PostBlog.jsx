@@ -1,29 +1,38 @@
+import { useEffect, useState } from "react";
 import styles from "./PostBlog.module.css";
 import Post from "../../components/Post/Post";
-import { useAxios } from "../../hooks/useAxios";
-import { useEffect, useState } from "react";
+import api from "../../hooks/api"; // ✅ new
+import { usePageTitle } from "../../Context/PageTitleContext"; // ✅ new
 
 const PostBlog = () => {
   const [posts, setPosts] = useState([]);
-
-  const { response, error, loading } = useAxios({
-    method: "GET",
-    url: "/blog/my-post/", // relative – hook prepends base
-    isProtected: true,
-    run: true,
-  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { updatePageTitle } = usePageTitle();
 
   useEffect(() => {
-    if (response) {
-      // If your API returns paginated results, use response.results
-      // If it returns an array directly, fallback to response
-      setPosts(response.results || response);
-    }
-  }, [response]);
+    updatePageTitle("My Posts");
+  }, [updatePageTitle]);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await api.get("/blog/my-post/");
+        const data = response.data;
+        // Handle both paginated and plain array responses
+        setPosts(data.results || data);
+      } catch (err) {
+        console.error("Failed to load posts:", err);
+        setError("Failed to load your posts.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPosts();
+  }, []);
 
   if (loading) return <div className={styles.loading}>Loading...</div>;
-  if (error)
-    return <div className={styles.error}>Failed to load your posts.</div>;
+  if (error) return <div className={styles.error}>{error}</div>;
 
   return (
     <div className={styles.PostBlogContainer}>

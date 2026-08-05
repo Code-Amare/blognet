@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
@@ -6,127 +6,72 @@ import {
   FaTrash,
   FaSave,
   FaUser,
-  FaEnvelope,
-  FaIdCard,
+  FaPhone,
+  FaCalendar,
+  FaVenusMars,
 } from "react-icons/fa";
-import UserContext from "../../context/UserContext";
-import { useAxios } from "../../hooks/useAxios"; // adjust import
+import api from "../../hooks/api";
+import { useUser } from "../../Context/UserContext";
+import { usePageTitle } from "../../Context/PageTitleContext";
 import styles from "./EditAccount.module.css";
 
-// URL is now relative – the hook prepends the base from VITE_API_URL
-const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
+const EditAccount = () => {
   const navigate = useNavigate();
-  const { user: currentUser, setUser } = useContext(UserContext);
+  const { user } = useUser();
+  const { updatePageTitle } = usePageTitle();
+  console.log(user);
+
+  const [profileData, setProfileData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   const [formData, setFormData] = useState({
-    display_name: "",
     first_name: "",
     last_name: "",
-    email: "",
+    date_of_birth: "",
+    gender: "",
+    phone_number: "",
   });
 
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
 
-  // ---- 1. Fetch profile data ----
-  const {
-    response: profileData,
-    loading: profileLoading,
-    error: profileError,
-  } = useAxios({
-    method: "GET",
-    url: editApiUrl,
-    isProtected: true,
-    run: true,
-  });
-
-  // ---- 2. Update profile (PATCH) ----
-  const [updatePayload, setUpdatePayload] = useState(null);
-  const {
-    response: updateResponse,
-    loading: updateLoading,
-    error: updateError,
-  } = useAxios({
-    method: "PATCH",
-    url: editApiUrl,
-    data: updatePayload,
-    isProtected: true,
-    run: updatePayload !== null,
-  });
-
-  // ---- Handle fetched profile data ----
+  // ---- Set page title ----
   useEffect(() => {
-    if (profileData) {
-      setFormData({
-        display_name: profileData.display_name || "",
-        first_name: profileData.first_name || "",
-        last_name: profileData.last_name || "",
-        email: profileData.email || "",
-      });
-      if (profileData.avatar) {
-        setAvatarPreview(getAssetUrl(profileData.avatar));
+    updatePageTitle("Edit Profile");
+  }, [updatePageTitle]);
+
+  // ---- Fetch user data from /user/me/ ----
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get("/user/me/");
+        const userData = response.data.user; // backend wraps user object
+        setProfileData(userData);
+        setFormData({
+          first_name: userData.first_name || "",
+          last_name: userData.last_name || "",
+          date_of_birth: userData.date_of_birth || "",
+          gender: userData.gender || "",
+          phone_number: userData.phone_number || "",
+        });
+        if (userData.profile_picture) {
+          setAvatarPreview(userData.profile_picture); // full URL from Cloudinary
+        }
+      } catch (error) {
+        console.error("Profile fetch error:", error);
+        setFeedback({
+          type: "error",
+          message: "Failed to load account settings.",
+        });
+      } finally {
+        setProfileLoading(false);
       }
-    }
-  }, [profileData]);
-
-  // ---- Handle fetch errors ----
-  useEffect(() => {
-    if (profileError) {
-      console.error("Profile fetch error:", profileError);
-      setFeedback({
-        type: "error",
-        message: "Failed to load account settings.",
-      });
-    }
-  }, [profileError]);
-
-  // ---- Handle update response ----
-  useEffect(() => {
-    if (updateResponse) {
-      setFeedback({
-        type: "success",
-        message: "Account updated successfully!",
-      });
-      // Update context if available
-      if (setUser && updateResponse?.profile) {
-        setUser((prev) => ({ ...prev, ...updateResponse.profile }));
-      }
-      // Clear the payload to prevent re-fetch
-      setUpdatePayload(null);
-      // Optionally reload or navigate
-      window.location.reload(); // keep original behaviour
-    }
-  }, [updateResponse, setUser]);
-
-  // ---- Handle update errors ----
-  useEffect(() => {
-    if (updateError) {
-      console.error("Update error:", updateError);
-      setFeedback({
-        type: "error",
-        message:
-          updateError.response?.data?.message || "Failed to update profile.",
-      });
-      setUpdatePayload(null);
-    }
-  }, [updateError]);
-
-  // ---- Helper: build asset URL ----
-  const getAssetUrl = (path) => {
-    console.log(path);
-    if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
-    // Use the same base as the hook (or fallback)
-    const base = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8000";
-    const newPath = path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
-    console.log(newPath);
-
-    return newPath;
-  };
+    };
+    fetchProfile();
+  }, []);
 
   // ---- Form handlers ----
   const handleChange = (e) => {
@@ -151,7 +96,10 @@ const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
     setRemoveAvatar(true);
   };
 
-  const initialLetter = (formData.display_name || currentUser?.username || "?")
+  const initialLetter = (
+    user?.firstName || // fallback from context (still loading)
+    "?"
+  )
     .charAt(0)
     .toUpperCase();
 
@@ -159,21 +107,44 @@ const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFeedback({ type: "", message: "" });
+    setUpdateLoading(true);
 
     const submitData = new FormData();
-    submitData.append("display_name", formData.display_name);
     submitData.append("first_name", formData.first_name);
     submitData.append("last_name", formData.last_name);
-    submitData.append("email", formData.email);
+    submitData.append("date_of_birth", formData.date_of_birth || "");
+    submitData.append("gender", formData.gender || "");
+    submitData.append("phone_number", formData.phone_number || "");
 
     if (avatarFile) {
-      submitData.append("avatar", avatarFile);
+      submitData.append("profile_picture", avatarFile);
     } else if (removeAvatar) {
-      submitData.append("remove_avatar", "true");
+      submitData.append("remove_profile_pic", "true");
     }
 
-    // Trigger the PATCH request
-    setUpdatePayload(submitData);
+    try {
+      await api.patch("/user/profile/update/", submitData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setFeedback({
+        type: "success",
+        message: "Profile updated successfully!",
+      });
+      // Reload to reflect changes (user context will be refreshed)
+      window.location.reload();
+    } catch (error) {
+      console.error("Update error:", error);
+      const errData = error.response?.data;
+      setFeedback({
+        type: "error",
+        message:
+          typeof errData?.errors === "string"
+            ? errData.errors
+            : errData?.detail || "Failed to update profile.",
+      });
+    } finally {
+      setUpdateLoading(false);
+    }
   };
 
   // ---- Render ----
@@ -201,7 +172,7 @@ const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
 
       <div className={styles.formHeader}>
         <h1>Edit Profile</h1>
-        <p>Update your photo and account information</p>
+        <p>Update your personal information and photo</p>
       </div>
 
       {feedback.message && (
@@ -223,7 +194,7 @@ const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
             {avatarPreview && !removeAvatar ? (
               <img
                 src={avatarPreview}
-                alt="Avatar preview"
+                alt="Profile preview"
                 className={styles.avatar}
               />
             ) : (
@@ -260,21 +231,7 @@ const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
 
         <hr className={styles.divider} />
 
-        <div className={styles.fieldGroup}>
-          <label className={styles.label}>
-            <FaIdCard className={styles.fieldIcon} /> Display Name
-          </label>
-          <input
-            type="text"
-            name="display_name"
-            value={formData.display_name}
-            onChange={handleChange}
-            placeholder="How you appear on posts"
-            className={styles.input}
-            required
-          />
-        </div>
-
+        {/* Fields matching UpdateProfileSerializer */}
         <div className={styles.rowGrid}>
           <div className={styles.fieldGroup}>
             <label className={styles.label}>
@@ -285,7 +242,7 @@ const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
               name="first_name"
               value={formData.first_name}
               onChange={handleChange}
-              placeholder="First name"
+              placeholder="Your first name"
               className={styles.input}
             />
           </div>
@@ -299,24 +256,55 @@ const EditAccount = ({ editApiUrl = "/profile/edit/" }) => {
               name="last_name"
               value={formData.last_name}
               onChange={handleChange}
-              placeholder="Last name"
+              placeholder="Your last name"
               className={styles.input}
             />
           </div>
         </div>
 
+        <div className={styles.rowGrid}>
+          <div className={styles.fieldGroup}>
+            <label className={styles.label}>
+              <FaCalendar className={styles.fieldIcon} /> Date of Birth
+            </label>
+            <input
+              type="date"
+              name="date_of_birth"
+              value={formData.date_of_birth}
+              onChange={handleChange}
+              className={styles.input}
+            />
+          </div>
+
+          <div className={styles.fieldGroup}>
+            <label className={styles.label}>
+              <FaVenusMars className={styles.fieldIcon} /> Gender
+            </label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              className={styles.input}
+            >
+              <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+              <option value="MALE">Male</option>
+              <option value="FEMALE">Female</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+
         <div className={styles.fieldGroup}>
           <label className={styles.label}>
-            <FaEnvelope className={styles.fieldIcon} /> Email Address
+            <FaPhone className={styles.fieldIcon} /> Phone Number
           </label>
           <input
-            type="email"
-            name="email"
-            value={formData.email}
+            type="tel"
+            name="phone_number"
+            value={formData.phone_number}
             onChange={handleChange}
-            placeholder="your.email@example.com"
+            placeholder="Enter your phone number"
             className={styles.input}
-            required
           />
         </div>
 

@@ -12,7 +12,7 @@
 }
 
 .modal {
-  background-color: #ffffff;
+  background-color: var(--bg-primary);
   border-radius: 1rem;
   padding: 1.75rem;
   max-width: 400px;
@@ -28,7 +28,7 @@
 .iconWrapper {
   width: 3.25rem;
   height: 3.25rem;
-  background-color: #fef2f2;
+  background-color: var(--color-error-bg);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -38,19 +38,19 @@
 
 .logoutIcon {
   font-size: 1.6rem;
-  color: #ef4444;
+  color: var(--color-error-text);
 }
 
 .title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--text-primary);
   margin: 0 0 0.5rem 0;
 }
 
 .message {
   font-size: 0.925rem;
-  color: #64748b;
+  color: var(--text-secondary);
   line-height: 1.5;
   margin: 0 0 1.5rem 0;
 }
@@ -74,23 +74,29 @@
 }
 
 .cancelBtn {
-  background-color: #f1f5f9;
-  color: #475569;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
 }
 
-.cancelBtn:hover {
-  background-color: #e2e8f0;
-  color: #0f172a;
+.cancelBtn:hover:not(:disabled) {
+  background-color: var(--border-light);
+  color: var(--text-primary);
 }
 
 .confirmBtn {
-  background-color: #ef4444;
-  color: #ffffff;
+  background-color: var(--color-error-text);
+  color: var(--bg-primary);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
 }
 
-.confirmBtn:hover {
-  background-color: #dc2626;
+.confirmBtn:hover:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.cancelBtn:disabled,
+.confirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @keyframes fadeIn {

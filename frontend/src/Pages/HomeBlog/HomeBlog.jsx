@@ -1,57 +1,62 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Post from "../../components/Post/Post";
 import PostBlank from "../../components/PostBlank/PostBlank";
-import { useAxios } from "../../hooks/useAxios"; // adjust path
+import api from "../../hooks/api";
+import { usePageTitle } from "../../Context/PageTitleContext";
 import styles from "./HomeBlog.module.css";
 
 const HomeBlog = () => {
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const observer = useRef(null);
 
-  // Fetch posts for current page
-  const { response, loading, error } = useAxios({
-    method: "GET",
-    url: `/blog/posts/?page=${page}`,
-    isProtected: true, // uses stored token
-    run: true,
-  });
+  const { updatePageTitle } = usePageTitle();
 
-  // Handle new page data
+  // ---- Set page title ----
   useEffect(() => {
-    if (!response) return;
+    updatePageTitle("Home");
+  }, [updatePageTitle]);
 
-    const fetchedPosts = response.results || response || [];
-    const nextUrl = response.next;
+  // ---- Fetch posts whenever page changes ----
+  useEffect(() => {
+    let cancelled = false;
+    const fetchPosts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await api.get(`/blog/posts/?page=${page}`);
+        if (cancelled) return;
+        const data = response.data;
+        const fetchedPosts = data.results || data || [];
+        const nextUrl = data.next;
 
-    setPosts((prev) => {
-      if (page === 1) {
-        // First page – replace
-        return fetchedPosts;
-      } else {
-        // Subsequent pages – append and deduplicate
-        const existingIds = new Set(prev.map((p) => p.id));
-        const newUniquePosts = fetchedPosts.filter(
-          (p) => !existingIds.has(p.id),
-        );
-        return [...prev, ...newUniquePosts];
+        setPosts((prev) => {
+          if (page === 1) return fetchedPosts;
+          const existingIds = new Set(prev.map((p) => p.id));
+          const newUnique = fetchedPosts.filter((p) => !existingIds.has(p.id));
+          return [...prev, ...newUnique];
+        });
+
+        setHasMore(Boolean(nextUrl));
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load posts:", err);
+        setError("Failed to load feed. Please check your connection.");
+        setHasMore(false);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    });
+    };
+    fetchPosts();
+    return () => {
+      cancelled = true;
+    };
+  }, [page]);
 
-    setHasMore(Boolean(nextUrl));
-  }, [response, page]);
-
-  // Handle fetch errors – stop loading more
-  useEffect(() => {
-    if (error) {
-      console.error("Failed to load posts:", error);
-      setHasMore(false);
-    }
-  }, [error]);
-
-  // IntersectionObserver callback
+  // ---- Intersection Observer for infinite scroll ----
   const lastPostRef = useCallback(
     (node) => {
       if (loading) return;
@@ -60,7 +65,7 @@ const HomeBlog = () => {
       observer.current = new IntersectionObserver(
         (entries) => {
           if (entries[0].isIntersecting && hasMore && !loading) {
-            setPage((prevPage) => prevPage + 1);
+            setPage((prev) => prev + 1);
           }
         },
         { threshold: 0.5 },
@@ -74,7 +79,6 @@ const HomeBlog = () => {
   return (
     <main className={styles.HomeBlogContainer}>
       <div className={styles.feedWrapper}>
-        {/* Render posts */}
         {posts.map((post, index) => {
           const isLast = posts.length === index + 1;
           return (
@@ -88,7 +92,6 @@ const HomeBlog = () => {
           );
         })}
 
-        {/* Loading skeletons */}
         {loading && (
           <div className={styles.loadingContainer}>
             <PostBlank />
@@ -96,7 +99,6 @@ const HomeBlog = () => {
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && posts.length === 0 && !error && (
           <div className={styles.emptyState}>
             <h3>No Posts Found</h3>
@@ -104,14 +106,8 @@ const HomeBlog = () => {
           </div>
         )}
 
-        {/* Error state */}
-        {error && (
-          <div className={styles.errorState}>
-            Failed to load feed. Please check your connection.
-          </div>
-        )}
+        {error && <div className={styles.errorState}>{error}</div>}
 
-        {/* End of feed */}
         {!hasMore && posts.length > 0 && (
           <div className={styles.endOfFeed}>
             <span>You've reached the end of the feed.</span>
