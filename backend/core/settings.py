@@ -186,6 +186,8 @@ else:
                 "hosts": [
                     os.getenv("REDIS_URL")
                 ],
+                "capacity": 1500,
+            "expiry": 10,
             },
         },
     }
