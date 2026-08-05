@@ -78,7 +78,7 @@ const Login = ({ interval = 8000 }) => {
       setGeneralError("");
       setIsGoogleSubmitting(true);
       try {
-        const response = await api.post("/user/google/login/", {
+        const response = await api.post("/user/login/google/", {
           token: tokenResponse.access_token,
         });
         handleAuthSuccess(response.data);

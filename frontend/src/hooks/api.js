@@ -79,7 +79,7 @@ api.interceptors.response.use(
       try {
 
         await refreshApi.post(
-          "/accounts/token/refresh/"
+          "/user/token/refresh/"
         );
 
         return api(originalRequest);
