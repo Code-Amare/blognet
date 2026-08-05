@@ -74,7 +74,14 @@ const Home = ({ interval = 4000 }) => {
             A modern platform to express your ideas, publish your passions, and
             build a connected community.
           </p>
-          <button className={styles.primaryBtn}>Create Your Blog</button>
+          <button
+            onClick={() => {
+              navigation("/login");
+            }}
+            className={styles.primaryBtn}
+          >
+            Create Your Blog
+          </button>
         </div>
 
         {/* Right Column: GIF Visual */}

@@ -17,14 +17,14 @@ import {
   FaRegBookmark,
   FaComment,
 } from "react-icons/fa";
+import { MdEdit } from "react-icons/md";
 import UserContext from "../../context/UserContext";
-import { useAxios } from "../../hooks/useAxios"; // adjust import
+import { useAxios } from "../../hooks/useAxios";
 import styles from "./PostDetail.module.css";
 
-// Use API_URL from env via useAxios; no need for base constant
 const PostDetail = ({
-  postDetailUrl = "/blog/post/", // relative – hook prepends base
-  commentsUrl = "/blog/post/comments/", // relative
+  postDetailUrl = "/blog/post/",
+  commentsUrl = "/blog/post/comments/",
 }) => {
   const { postId } = useParams();
   const navigate = useNavigate();
@@ -38,14 +38,13 @@ const PostDetail = ({
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
 
-  // Comment state
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const socketRef = useRef(null);
 
-  // ---- 1. Fetch Post Detail ----
+  // ---- Fetch Post Detail ----
   const {
     response: postResponse,
     loading: postLoading,
@@ -57,7 +56,7 @@ const PostDetail = ({
     run: !!postId,
   });
 
-  // ---- 2. Fetch Comments ----
+  // ---- Fetch Comments ----
   const {
     response: commentsResponse,
     loading: commentsLoading,
@@ -69,7 +68,7 @@ const PostDetail = ({
     run: !!postId,
   });
 
-  // ---- 3. Submit Comment ----
+  // ---- Submit Comment ----
   const [commentPayload, setCommentPayload] = useState(null);
   const {
     response: commentResponse,
@@ -114,14 +113,12 @@ const PostDetail = ({
   useEffect(() => {
     if (commentsError) {
       console.error("Error loading comments:", commentsError);
-      // Do not set overall error; just log
     }
   }, [commentsError]);
 
   // ---- Handle comment submission response ----
   useEffect(() => {
     if (commentResponse) {
-      // Append new comment to the list
       setComments((prev) => [commentResponse, ...prev]);
       setNewComment("");
       setCommentPayload(null);
@@ -140,20 +137,13 @@ const PostDetail = ({
 
   // ---- Combine loading state ----
   useEffect(() => {
-    // Initial loading is done when both post and comments have finished (or errored)
     if (!postId) return;
-    // If postLoading or commentsLoading are true, we're still loading
-    // But we also want to handle the case where one fails immediately.
-    // We'll set loading false when both have resolved (or errored)
-    // Using a simple condition: if postResponse or postError set, and commentsResponse or commentsError set.
-    // But we can also use the loading flags directly.
-    // For simplicity, we set loading false when postLoading and commentsLoading are both false.
     if (!postLoading && !commentsLoading) {
       setLoading(false);
     }
   }, [postLoading, commentsLoading, postId]);
 
-  // ---- WebSocket like sync (unchanged) ----
+  // ---- WebSocket like sync ----
   const onMessage = useCallback(
     (event) => {
       try {
@@ -195,17 +185,16 @@ const PostDetail = ({
     };
   }, [postId, onMessage]);
 
+  // ---- ✅ FIXED: Keep /api, do NOT remove it ----
   const getAssetUrl = (path) => {
-    console.log(path);
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    // Use the same base as the hook (or fallback)
-    const base = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8000";
-    const newPath = path.startsWith("/") ? `${base}${path}` : `${base}/${path}`;
-
-    return newPath;
+    const mediaBase = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8001";
+    return path.startsWith("/")
+      ? `${mediaBase}${path}`
+      : `${mediaBase}/${path}`;
   };
 
   const extractCommentsArray = (data) => {
@@ -249,7 +238,6 @@ const PostDetail = ({
     e.preventDefault();
     if (!newComment.trim()) return;
     setIsSubmittingComment(true);
-    // Prepare payload – same shape as original
     setCommentPayload({
       comment: newComment,
       text: newComment,
@@ -279,6 +267,8 @@ const PostDetail = ({
     );
   }
 
+  const isAuthor = user?.id === post?.profile?.user?.id;
+
   const avatar = getAssetUrl(post?.profile?.avatar);
   const coverImage = getAssetUrl(post?.post_img);
   const authorName = post?.profile?.display_name || post?.user || "Anonymous";
@@ -296,6 +286,16 @@ const PostDetail = ({
           <span>Back</span>
         </button>
         <div className={styles.headerActions}>
+          {isAuthor && (
+            <button
+              type="button"
+              className={styles.iconActionBtn}
+              onClick={() => navigate(`/blog/edit-post/${postId}`)}
+              title="Edit Post"
+            >
+              <MdEdit />
+            </button>
+          )}
           <button
             type="button"
             className={styles.iconActionBtn}

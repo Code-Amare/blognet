@@ -1,4 +1,3 @@
-// pages/EditPost/EditPost.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -40,7 +39,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
 
   const [errorMsg, setErrorMsg] = useState("");
 
-  // ---- Fetch categories ----
+  // Fetch categories
   const {
     response: categoriesResponse,
     loading: categoriesLoading,
@@ -52,19 +51,19 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     run: true,
   });
 
-  // ---- Fetch existing post ----
+  // Fetch existing post – using the same endpoint as PostDetail
   const {
-    response: postData,
+    response: postResponse,
     loading: postLoading,
     error: postError,
   } = useAxios({
     method: "GET",
-    url: `/blog/edit-post/${postId}/`,
+    url: `/blog/post/${postId}/`,
     isProtected: true,
     run: !!postId,
   });
 
-  // ---- Update post (PATCH) ----
+  // Update post (PATCH) – using the dedicated edit endpoint
   const [updatePayload, setUpdatePayload] = useState(null);
   const {
     response: updateResponse,
@@ -78,11 +77,13 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     run: updatePayload !== null,
   });
 
-  // ---- Handle categories ----
+  // Handle categories
   useEffect(() => {
     if (categoriesResponse) {
-      let fetchedData = categoriesResponse;
-      if (Array.isArray(fetchedData) && fetchedData.length > 0) {
+      const fetchedData = Array.isArray(categoriesResponse)
+        ? categoriesResponse
+        : categoriesResponse.results || [];
+      if (fetchedData.length > 0) {
         setCategories(fetchedData);
       }
     }
@@ -91,29 +92,32 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     }
   }, [categoriesResponse, categoriesError]);
 
-  // ---- Handle post data ----
+  // Handle post data
   useEffect(() => {
-    if (postData) {
+    if (postResponse) {
+      const raw = postResponse;
+      const postData = raw?.post || raw;
       setPostTitle(postData.post_title || "");
       setPostBody(postData.post_body || "");
       setColor(postData.post_title_color || "#000000");
-      // Set category
-      const cat = postData.post_category;
-      if (cat) {
-        // find the matching category value from the list
-        const found = categories.find((c) => getCatValue(c) === cat);
-        setCategory(found ? getCatValue(found) : cat);
+
+      const catString = postData.post_category;
+      if (catString && categories.length > 0) {
+        const matched = categories.find((c) => getCatValue(c) === catString);
+        setCategory(matched ? getCatValue(matched) : catString);
+      } else if (catString) {
+        setCategory(catString);
       }
-      // Set existing image
+
       if (postData.post_img) {
         const imgUrl = getAssetUrl(postData.post_img);
         setExistingImageUrl(imgUrl);
         setPreviewUrl(imgUrl);
       }
     }
-  }, [postData, categories]);
+  }, [postResponse, categories]);
 
-  // ---- Handle update response ----
+  // Handle update response
   useEffect(() => {
     if (updateResponse) {
       navigate("/blog/post");
@@ -121,7 +125,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     }
   }, [updateResponse, navigate]);
 
-  // ---- Handle update error ----
+  // Handle update error
   useEffect(() => {
     if (updateError) {
       console.error("Error updating post:", updateError);
@@ -131,19 +135,16 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
   }, [updateError]);
 
   // ---- Helper functions ----
+  // ✅ FIXED: Keep /api in the path, don't strip it
   const getAssetUrl = (path) => {
     if (!path) return null;
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    let cleanPath = path;
-    if (cleanPath.startsWith("/api/")) {
-      cleanPath = cleanPath.slice(4);
-    }
     const mediaBase = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8001";
-    return cleanPath.startsWith("/")
-      ? `${mediaBase}${cleanPath}`
-      : `${mediaBase}/${cleanPath}`;
+    return path.startsWith("/")
+      ? `${mediaBase}${path}`
+      : `${mediaBase}/${path}`;
   };
 
   const getCatValue = (item) => {
@@ -168,15 +169,10 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     return found ? getCatLabel(found) : category;
   };
 
-  // ---- Handle image change ----
+  // Handle image preview
   useEffect(() => {
     if (!file) {
-      // If no new file, keep the existing image preview
-      if (existingImageUrl) {
-        setPreviewUrl(existingImageUrl);
-      } else {
-        setPreviewUrl(null);
-      }
+      setPreviewUrl(existingImageUrl || null);
       return;
     }
     const objectUrl = URL.createObjectURL(file);
@@ -217,8 +213,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     formData.append("post_body", postBody);
     if (file) {
       formData.append("post_img", file);
-    } else if (existingImageUrl === null && postData?.post_img) {
-      // If the user removed the image, send a flag to delete it
+    } else if (existingImageUrl === null && postResponse?.post_img) {
       formData.append("remove_img", "true");
     }
     formData.append("post_title_color", color);
@@ -227,7 +222,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     setUpdatePayload(formData);
   };
 
-  // ---- Loading state ----
+  // ---- Loading & error states ----
   if (postLoading) {
     return (
       <div className={styles.loadingContainer}>
@@ -237,7 +232,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     );
   }
 
-  if (postError || !postData) {
+  if (postError || !postResponse) {
     return (
       <div className={styles.errorContainer}>
         <h2>Post Not Found</h2>
@@ -249,6 +244,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     );
   }
 
+  // ---- Render ----
   return (
     <div className={styles.editorContainer}>
       <header className={styles.editorHeader}>
