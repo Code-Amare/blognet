@@ -6,7 +6,7 @@
   height: 100vh;
   height: 100dvh;
   background-color: #ffffff;
-  overflow: hidden;
+  /* overflow: hidden; */
 }
 
 .mainWrapper {
