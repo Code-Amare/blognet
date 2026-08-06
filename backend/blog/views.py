@@ -7,9 +7,12 @@ from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import ListAPIView
 from django.shortcuts import get_object_or_404
-
+from django.contrib.auth import get_user_model
+from django.db.models import Sum, Count
 from .models import BlogPost, Comments, LikePost
 from .serializers import PostSerializer, CommentSerializer
+
+User = get_user_model()
 
 
 class LikePostView(APIView):
@@ -102,7 +105,9 @@ class MyPostView(APIView):
         serializer = PostSerializer(
             posts,
             many=True,
-            user=request.user
+            context={
+                "request": request
+            }
         )
 
 
@@ -127,15 +132,67 @@ class PaginatedPostView(ListAPIView):
     pagination_class = PostPagination
 
 
-    def get_serializer(self, *args, **kwargs):
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
 
-        kwargs["user"] = self.request.user
 
-        return super().get_serializer(
-            *args,
-            **kwargs
+class BlogProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        user = get_object_or_404(
+            User,
+            uuid=user_id
         )
 
+        posts = (
+            BlogPost.objects
+            .filter(user=user)
+            .annotate(
+                comments_count=Count("comments")
+            )
+            .order_by("-timestamp")
+        )
+
+        serializer = PostSerializer(
+            posts,
+            many=True,
+            context={"request": request},
+        )
+
+        total_posts = posts.count()
+
+        total_likes = (
+            posts.aggregate(
+                total=Sum("like")
+            )["total"]
+            or 0
+        )
+
+        profile_picture = None
+
+        if getattr(user, "profile_picture", None):
+            profile_picture = user.profile_picture.url
+
+        return Response(
+            {
+                "id": user.uuid,
+                "full_name": user.get_full_name(),
+                "email": user.email,
+                "profile_picture": profile_picture,
+                "date_joined": user.date_joined,
+
+                "stats": {
+                    "total_posts": total_posts,
+                    "total_likes": total_likes,
+                },
+
+                "posts": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class PostView(APIView):
@@ -166,7 +223,9 @@ class PostView(APIView):
         serializer = PostSerializer(
             posts,
             many=True,
-            user=request.user
+            context={
+                "request": request
+            }
         )
 
         return Response(
@@ -179,8 +238,7 @@ class PostView(APIView):
     def post(self, request):
 
         serializer = PostSerializer(
-            data=request.data,
-            user=request.user
+            data=request.data
         )
 
         if serializer.is_valid():
@@ -213,8 +271,7 @@ class PostView(APIView):
 
         serializer = PostSerializer(
             post,
-            data=request.data,
-            user=request.user
+            data=request.data
         )
 
 
@@ -247,8 +304,7 @@ class PostView(APIView):
         serializer = PostSerializer(
             post,
             data=request.data,
-            partial=True,
-            user=request.user
+            partial=True
         )
 
 
@@ -327,9 +383,7 @@ class CommentView(APIView):
 
 
 class PostDetailView(APIView):
-
-    permission_classes = [IsAuthenticated]
-
+    parser_classes = [MultiPartParser, FormParser]
 
     def get(self, request, post_id):
 
@@ -341,7 +395,9 @@ class PostDetailView(APIView):
 
         serializer = PostSerializer(
             post,
-            user=request.user
+            context={
+                "request": request
+            }
         )
 
 
@@ -375,8 +431,7 @@ class PostDetailView(APIView):
         serializer = PostSerializer(
             post,
             data=request.data,
-            partial=True,
-            user=request.user
+            partial=True
         )
 
 

@@ -225,8 +225,6 @@ CSRF_TRUSTED_ORIGINS = [
     if origin.strip()
 ]
 
-print(CORS_ALLOWED_ORIGINS)
-print(CSRF_TRUSTED_ORIGINS)
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -257,6 +255,8 @@ CLOUDINARY_STORAGE = {
     "API_SECRET": os.getenv("CLOUDINARY_API_SECRET"),
     "SECURE": True,
 }
+
+
 
 AUTH_USER_MODEL = "user.User"
 

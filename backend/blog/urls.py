@@ -12,4 +12,5 @@ urlpatterns = [
     path("categories/", views.BlogCategoryListView.as_view()),
     path("post/comments/", views.CommentView.as_view()),
     path("post/comments/<int:post_id>/", views.CommentView.as_view()),
+    path("profile/<uuid:user_id>/", views.BlogProfileView.as_view()),
 ]

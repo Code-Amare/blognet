@@ -34,7 +34,7 @@ class BlogPost(models.Model):
         ordering = ["-timestamp"]
 
     def __str__(self):
-        return f"{self.user.full_name} posted {self.post_title}"
+        return f"{self.user.get_full_name()} posted {self.post_title}"
 
 
 class LikePost(models.Model):
@@ -46,7 +46,7 @@ class LikePost(models.Model):
         unique_together = ("post", "user")
 
     def __str__(self):
-        return f"{self.user.full_name} liked {self.post.post_title}"
+        return f"{self.user.get_full_name()} liked {self.post.post_title}"
 
 
 class Comments(models.Model):
@@ -59,4 +59,4 @@ class Comments(models.Model):
         ordering = ["-timestamp"]
 
     def __str__(self):
-        return f"{self.commenter.full_name} said {self.comment}"
+        return f"{self.commenter.get_full_name()} said {self.comment}"
