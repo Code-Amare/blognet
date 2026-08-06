@@ -19,7 +19,6 @@ const EditAccount = () => {
   const navigate = useNavigate();
   const { user } = useUser();
   const { updatePageTitle } = usePageTitle();
-  console.log(user);
 
   const [profileData, setProfileData] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);

@@ -172,25 +172,14 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     formData.append("post_title_color", color);
     formData.append("post_category", category);
 
-    // Image handling:
-    // - If a new file is selected, send it (field name 'post_img_file')
-    // - If no file and no existing image, user removed it → send remove flag
     if (file) {
       formData.append("post_img_upload", file);
     } else if (!existingImageUrl) {
       formData.append("remove_post_img", "true");
     }
 
-    // Debug: log FormData contents
-    console.log("📦 FormData entries:");
-    for (let pair of formData.entries()) {
-      console.log(pair[0], pair[1]);
-    }
-
     try {
-      // ✅ Do NOT set Content-Type manually – axios/browser will add the boundary
       const res = await api.patch(`/blog/edit-post/${postId}/`, formData);
-      console.log("✅ Update successful:", res.data);
       navigate(`/blog/post/${postId}`);
     } catch (error) {
       console.error("Error updating post:", error);

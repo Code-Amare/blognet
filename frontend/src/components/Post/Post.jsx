@@ -10,7 +10,6 @@ const MAX_BODY_LENGTH = 120;
 const WS_URL = import.meta.env.VITE_WS_URL;
 
 const Post = ({ post }) => {
-  console.log(post);
   const { user } = useUser();
 
   const [likeCount, setLikeCount] = useState(post?.like ?? 0);
@@ -99,7 +98,7 @@ const Post = ({ post }) => {
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log(`Connected to like socket for post ${post.id}`);
+      // console.log(`Connected to like socket for post ${post.id}`);
     };
 
     socket.onmessage = onMessage;
@@ -109,7 +108,7 @@ const Post = ({ post }) => {
     };
 
     socket.onclose = () => {
-      console.log("Like socket closed.");
+      // console.log("Like socket closed.");
     };
 
     return () => {

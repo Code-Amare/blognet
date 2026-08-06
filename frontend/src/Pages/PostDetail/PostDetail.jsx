@@ -109,7 +109,7 @@ const PostDetail = ({
     socketRef.current = socket;
 
     socket.onopen = () => {
-      console.log(`Connected to PostDetail #${postId}`);
+      // console.log(`Connected to PostDetail #${postId}`);
     };
 
     socket.onmessage = onMessage;
@@ -119,7 +119,7 @@ const PostDetail = ({
     };
 
     socket.onclose = () => {
-      console.log("Like WebSocket closed.");
+      // console.log("Like WebSocket closed.");
     };
 
     return () => {
