@@ -17,10 +17,16 @@ const STATES = [
 ];
 
 const Register = ({ interval = 8000 }) => {
-  const [username, setUsername] = useState("");
+  // ---- Form fields ----
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+
   const [generalError, setGeneralError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,6 +36,7 @@ const Register = ({ interval = 8000 }) => {
   const navigate = useNavigate();
   const { updatePageTitle } = usePageTitle();
 
+  // Preload images
   useEffect(() => {
     STATES.forEach((state) => {
       const img = new Image();
@@ -38,6 +45,7 @@ const Register = ({ interval = 8000 }) => {
     updatePageTitle("Register");
   }, []);
 
+  // Rotate visuals
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % STATES.length);
@@ -58,29 +66,48 @@ const Register = ({ interval = 8000 }) => {
     setGeneralError("");
     setFieldErrors({});
 
-    if (!username || !email || !password || !confirmPassword) {
-      setGeneralError("Please fill in all fields.");
+    // Basic validation
+    if (!email || !password || !passwordConfirm) {
+      setGeneralError(
+        "Email, password, and password confirmation are required.",
+      );
       return;
     }
-
-    if (password !== confirmPassword) {
-      setFieldErrors({ confirmPassword: ["Passwords do not match."] });
+    if (password !== passwordConfirm) {
+      setFieldErrors({ password_confirm: ["Passwords do not match."] });
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await api.post("/register/", { username, email, password });
+      // Send fields exactly as the backend expects
+      await api.post("/user/register/", {
+        email,
+        password,
+        password_confirm: passwordConfirm,
+        first_name: firstName,
+        last_name: lastName,
+        date_of_birth: dateOfBirth || null,
+        gender: gender || null,
+        phone_number: phoneNumber || null,
+      });
       navigate("/login");
     } catch (err) {
-      const errorsObj = err.response?.data?.errors;
-      if (typeof errorsObj === "string") {
-        setGeneralError(errorsObj);
-      } else if (typeof errorsObj === "object" && errorsObj !== null) {
-        setFieldErrors(errorsObj);
+      const data = err.response?.data;
+      if (data?.errors) {
+        // If errors is an object, set field errors; if string, set general
+        if (typeof data.errors === "string") {
+          setGeneralError(data.errors);
+        } else if (typeof data.errors === "object") {
+          setFieldErrors(data.errors);
+        } else {
+          setGeneralError("Something went wrong. Please try again.");
+        }
+      } else if (data?.detail) {
+        setGeneralError(data.detail);
       } else {
-        setGeneralError("Something went wrong. Please try again.");
+        setGeneralError("Registration failed. Please check your information.");
       }
     } finally {
       setIsSubmitting(false);
@@ -94,7 +121,7 @@ const Register = ({ interval = 8000 }) => {
       setIsGoogleSubmitting(true);
 
       try {
-        const response = await api.post("/google/register/", {
+        const response = await api.post("/user/register/google/", {
           token: tokenResponse.access_token,
         });
         handleAuthSuccess(response.data);
@@ -188,31 +215,10 @@ const Register = ({ interval = 8000 }) => {
             </div>
 
             <form onSubmit={handleSubmit} className={styles.form} noValidate>
-              <div className={styles.inputGroup}>
-                <label htmlFor="username" className={styles.label}>
-                  Username
-                </label>
-                <input
-                  className={`${styles.input} ${
-                    fieldErrors.username ? styles.inputError : ""
-                  }`}
-                  type="text"
-                  id="username"
-                  placeholder="Choose a username"
-                  autoComplete="username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-                {fieldErrors.username && (
-                  <span className={styles.fieldError}>
-                    {fieldErrors.username.join(" ")}
-                  </span>
-                )}
-              </div>
-
+              {/* Email */}
               <div className={styles.inputGroup}>
                 <label htmlFor="email" className={styles.label}>
-                  Email Address
+                  Email Address *
                 </label>
                 <input
                   className={`${styles.input} ${
@@ -224,6 +230,7 @@ const Register = ({ interval = 8000 }) => {
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
                 {fieldErrors.email && (
                   <span className={styles.fieldError}>
@@ -232,50 +239,138 @@ const Register = ({ interval = 8000 }) => {
                 )}
               </div>
 
+              {/* First Name */}
+              <div className={styles.inputGroup}>
+                <label htmlFor="firstName" className={styles.label}>
+                  First Name
+                </label>
+                <input
+                  className={`${styles.input} ${
+                    fieldErrors.first_name ? styles.inputError : ""
+                  }`}
+                  type="text"
+                  id="firstName"
+                  placeholder="Your first name"
+                  autoComplete="given-name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+                {fieldErrors.first_name && (
+                  <span className={styles.fieldError}>
+                    {fieldErrors.first_name.join(" ")}
+                  </span>
+                )}
+              </div>
+
+              {/* Last Name */}
+              <div className={styles.inputGroup}>
+                <label htmlFor="lastName" className={styles.label}>
+                  Last Name
+                </label>
+                <input
+                  className={`${styles.input} ${
+                    fieldErrors.last_name ? styles.inputError : ""
+                  }`}
+                  type="text"
+                  id="lastName"
+                  placeholder="Your last name"
+                  autoComplete="family-name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+                {fieldErrors.last_name && (
+                  <span className={styles.fieldError}>
+                    {fieldErrors.last_name.join(" ")}
+                  </span>
+                )}
+              </div>
+
+              {/* Date of Birth */}
+              <div className={styles.inputGroup}>
+                <label htmlFor="dateOfBirth" className={styles.label}>
+                  Date of Birth
+                </label>
+                <input
+                  className={`${styles.input} ${
+                    fieldErrors.date_of_birth ? styles.inputError : ""
+                  }`}
+                  type="date"
+                  id="dateOfBirth"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                />
+                {fieldErrors.date_of_birth && (
+                  <span className={styles.fieldError}>
+                    {fieldErrors.date_of_birth.join(" ")}
+                  </span>
+                )}
+              </div>
+
+              {/* Gender */}
+              <div className={styles.inputGroup}>
+                <label htmlFor="gender" className={styles.label}>
+                  Gender
+                </label>
+                <select
+                  className={`${styles.input} ${
+                    fieldErrors.gender ? styles.inputError : ""
+                  }`}
+                  id="gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                  <option value="O">Other</option>
+                </select>
+                {fieldErrors.gender && (
+                  <span className={styles.fieldError}>
+                    {fieldErrors.gender.join(" ")}
+                  </span>
+                )}
+              </div>
+
+              {/* Phone Number */}
+              <div className={styles.inputGroup}>
+                <label htmlFor="phoneNumber" className={styles.label}>
+                  Phone Number
+                </label>
+                <input
+                  className={`${styles.input} ${
+                    fieldErrors.phone_number ? styles.inputError : ""
+                  }`}
+                  type="tel"
+                  id="phoneNumber"
+                  placeholder="+1234567890"
+                  autoComplete="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                />
+                {fieldErrors.phone_number && (
+                  <span className={styles.fieldError}>
+                    {fieldErrors.phone_number.join(" ")}
+                  </span>
+                )}
+              </div>
+
+              {/* Password */}
               <div className={styles.inputGroup}>
                 <label htmlFor="password" className={styles.label}>
-                  Password
+                  Password *
                 </label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    className={`${styles.input} ${
-                      fieldErrors.password ? styles.inputError : ""
-                    }`}
-                    type="password"
-                    id="password"
-                    placeholder="Create a strong password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    style={{
-                      paddingRight: "40px",
-                      width: "100%",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: "12px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      cursor: "help",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: "20px",
-                      height: "20px",
-                      borderRadius: "50%",
-                      border: "1px solid currentColor",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      color: "inherit",
-                      opacity: 0.6,
-                    }}
-                    title="Password requirements info"
-                  >
-                    i
-                  </div>
-                </div>
+                <input
+                  className={`${styles.input} ${
+                    fieldErrors.password ? styles.inputError : ""
+                  }`}
+                  type="password"
+                  id="password"
+                  placeholder="Create a strong password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
                 {fieldErrors.password && (
                   <span className={styles.fieldError}>
                     {fieldErrors.password.join(" ")}
@@ -283,23 +378,26 @@ const Register = ({ interval = 8000 }) => {
                 )}
               </div>
 
+              {/* Confirm Password */}
               <div className={styles.inputGroup}>
-                <label htmlFor="confirmPassword" className={styles.label}>
-                  Confirm Password
+                <label htmlFor="passwordConfirm" className={styles.label}>
+                  Confirm Password *
                 </label>
                 <input
                   className={`${styles.input} ${
-                    fieldErrors.confirmPassword ? styles.inputError : ""
+                    fieldErrors.password_confirm ? styles.inputError : ""
                   }`}
                   type="password"
-                  id="confirmPassword"
+                  id="passwordConfirm"
                   placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
+                  value={passwordConfirm}
+                  onChange={(e) => setPasswordConfirm(e.target.value)}
+                  required
                 />
-                {fieldErrors.confirmPassword && (
+                {fieldErrors.password_confirm && (
                   <span className={styles.fieldError}>
-                    {fieldErrors.confirmPassword.join(" ")}
+                    {fieldErrors.password_confirm.join(" ")}
                   </span>
                 )}
               </div>
@@ -308,10 +406,9 @@ const Register = ({ interval = 8000 }) => {
                 type="submit"
                 className={styles.submitBtn}
                 disabled={
-                  !username ||
                   !email ||
                   !password ||
-                  !confirmPassword ||
+                  !passwordConfirm ||
                   isSubmitting ||
                   isGoogleSubmitting
                 }

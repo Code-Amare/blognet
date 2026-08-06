@@ -8,8 +8,8 @@ import {
   MdPalette,
   MdCategory,
 } from "react-icons/md";
-import api from "../../hooks/api"; // ✅ replaced useAxios
-import { usePageTitle } from "../../Context/PageTitleContext"; // ✅ added
+import api from "../../hooks/api";
+import { usePageTitle } from "../../Context/PageTitleContext";
 import styles from "./EditPost.module.css";
 import defaultImg from "../../assets/defaultImg.png";
 
@@ -169,17 +169,29 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     const formData = new FormData();
     formData.append("post_title", postTitle);
     formData.append("post_body", postBody);
-    if (file) {
-      formData.append("post_img_upload", file);
-    } else if (existingImageUrl === null && postResponse?.post_img) {
-      formData.append("remove_img", "true");
-    }
     formData.append("post_title_color", color);
     formData.append("post_category", category);
 
+    // Image handling:
+    // - If a new file is selected, send it (field name 'post_img_file')
+    // - If no file and no existing image, user removed it → send remove flag
+    if (file) {
+      formData.append("post_img_upload", file);
+    } else if (!existingImageUrl) {
+      formData.append("remove_post_img", "true");
+    }
+
+    // Debug: log FormData contents
+    console.log("📦 FormData entries:");
+    for (let pair of formData.entries()) {
+      console.log(pair[0], pair[1]);
+    }
+
     try {
-      await api.patch(`/blog/edit-post/${postId}/`, formData);
-      navigate("/blog/post");
+      // ✅ Do NOT set Content-Type manually – axios/browser will add the boundary
+      const res = await api.patch(`/blog/edit-post/${postId}/`, formData);
+      console.log("✅ Update successful:", res.data);
+      navigate(`/blog/post/${postId}`);
     } catch (error) {
       console.error("Error updating post:", error);
       setErrorMsg("Failed to update post. Please try again.");
@@ -324,11 +336,6 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
                           key={catVal || idx}
                           type="button"
                           className={`${styles.pill} ${isSelected ? styles.activePill : ""}`}
-                          style={
-                            isSelected
-                              ? undefined // let CSS variables handle it
-                              : undefined
-                          }
                           onClick={() => handleCategoryClick(catVal)}
                         >
                           {catLabel}

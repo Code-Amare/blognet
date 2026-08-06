@@ -39,6 +39,7 @@ const Account = () => {
       try {
         const response = await api.get(`/blog/profile/${user.id}/`);
         const data = response.data; // shape: { id, full_name, profile_picture, date_joined, stats, posts, ... }
+        console.log(data);
         setProfile(data);
         updatePageTitle(data.full_name || "Profile");
         console.log(data);

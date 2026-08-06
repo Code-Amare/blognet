@@ -5,7 +5,6 @@ import Account from "../Account/Account";
 import EditAccount from "../EditAccount/EditAccount";
 import AddPost from "../AddPost/AddPost";
 import PostDetail from "../PostDetail/PostDetail";
-import PostEdit from "../PostEdit/PostEdit";
 import BlogLayout from "../../components/BlogLayout/BlogLayout";
 import EditPost from "../EditPost/EditPost";
 
@@ -18,7 +17,6 @@ const Blog = () => {
         <Route path="edit-post/:postId" element={<EditPost />} />
         <Route path="post/:postId/" element={<PostDetail />} />
         <Route path="post/" element={<PostBlog />} />
-        <Route path="post/edit/:postId/" element={<PostEdit />} />
         <Route path="account/" element={<Account />} />
         <Route path="account/edit/" element={<EditAccount />} />
       </Route>

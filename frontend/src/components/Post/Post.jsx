@@ -10,10 +10,12 @@ const MAX_BODY_LENGTH = 120;
 const WS_URL = import.meta.env.VITE_WS_URL;
 
 const Post = ({ post }) => {
+  console.log(post);
   const { user } = useUser();
 
   const [likeCount, setLikeCount] = useState(post?.like ?? 0);
   const [isLiked, setIsLiked] = useState(Boolean(post?.is_liked_by_me));
+
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -26,8 +28,11 @@ const Post = ({ post }) => {
 
   const getReadableTime = (timestamp) => {
     if (!timestamp) return "";
+
     try {
-      return formatDistanceToNow(parseISO(timestamp), { addSuffix: true });
+      return formatDistanceToNow(parseISO(timestamp), {
+        addSuffix: true,
+      });
     } catch {
       return "";
     }
@@ -35,34 +40,43 @@ const Post = ({ post }) => {
 
   const truncateText = (text, maxLength) => {
     if (!text) return "";
-    if (text.length <= maxLength) return text;
+
+    if (text.length <= maxLength) {
+      return text;
+    }
+
     return `${text.slice(0, maxLength).trim()}...`;
   };
 
-  // ✅ Extract author name from nested user object
   const authorDisplayName =
     post?.user?.full_name ||
     [post?.user?.first_name, post?.user?.last_name].filter(Boolean).join(" ") ||
     "Anonymous";
 
-  // ✅ Avatar from user.profile_picture
   const avatar = post?.user?.profile_picture || null;
 
   const readableTime = getReadableTime(post?.timestamp);
+
   const truncatedBody = truncateText(post?.post_body, MAX_BODY_LENGTH);
+
   const initialLetter = authorDisplayName.charAt(0).toUpperCase();
 
+  // Receive like updates
   const onMessage = useCallback(
     (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.post_id !== post?.id) return;
+
+        if (data.post_id !== post?.id) {
+          return;
+        }
 
         if (typeof data.like_count === "number") {
           setLikeCount(data.like_count);
         }
+
         if (
-          data.username === user?.username &&
+          data.user_id === user?.id &&
           typeof data.is_liked_by_me === "boolean"
         ) {
           setIsLiked(data.is_liked_by_me);
@@ -71,32 +85,56 @@ const Post = ({ post }) => {
         console.error("WebSocket message error:", err);
       }
     },
-    [post?.id, user?.username],
+    [post?.id, user?.id],
   );
 
+  // WebSocket connection
   useEffect(() => {
-    if (!WS_URL) return;
-    const socket = new WebSocket(`${WS_URL}/like/`);
+    if (!WS_URL || !post?.id) {
+      return;
+    }
+
+    const socket = new WebSocket(`${WS_URL}/ws/like/`);
+
     socketRef.current = socket;
-    socket.onopen = () =>
-      console.log(`Connected to like socket for post ${post?.id}`);
+
+    socket.onopen = () => {
+      console.log(`Connected to like socket for post ${post.id}`);
+    };
+
     socket.onmessage = onMessage;
-    socket.onerror = (err) => console.error("WebSocket error:", err);
-    socket.onclose = () => console.log("Like socket closed.");
-    return () => socket.close();
-  }, [onMessage, post?.id]);
+
+    socket.onerror = (error) => {
+      console.error("Like WebSocket error:", error);
+    };
+
+    socket.onclose = () => {
+      console.log("Like socket closed.");
+    };
+
+    return () => {
+      if (
+        socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING
+      ) {
+        socket.close();
+      }
+    };
+  }, [post?.id, onMessage]);
 
   const handleLikePost = (id) => {
     const nextIsLiked = !isLiked;
+
     setIsLiked(nextIsLiked);
+
     setLikeCount((prev) => (nextIsLiked ? prev + 1 : Math.max(prev - 1, 0)));
 
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({
           message: {
             post_id: id,
-            username: user?.username || "anonymous",
+            uuid: user?.id,
           },
         }),
       );
@@ -121,6 +159,7 @@ const Post = ({ post }) => {
 
           <div className={styles.authorMeta}>
             <h1 className={styles.authorName}>{authorDisplayName}</h1>
+
             <span className={styles.timestamp}>{readableTime}</span>
           </div>
         </div>
@@ -136,18 +175,21 @@ const Post = ({ post }) => {
           ) : (
             <FaRegHeart className={styles.heartIcon} />
           )}
+
           <span>{formatLikes(likeCount)}</span>
         </button>
       </header>
 
       <div className={styles.body}>
         <h2 className={styles.title}>{post?.post_title}</h2>
+
         <p className={styles.description}>{truncatedBody}</p>
       </div>
 
       <footer className={styles.footer}>
         <Link to={`/blog/post/${post?.id}`} className={styles.readMoreBtn}>
           <span>Read More</span>
+
           <FaArrowRight className={styles.arrowIcon} />
         </Link>
       </footer>

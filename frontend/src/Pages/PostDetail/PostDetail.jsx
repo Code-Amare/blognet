@@ -17,6 +17,9 @@ import { useUser } from "../../Context/UserContext";
 import { usePageTitle } from "../../Context/PageTitleContext";
 import styles from "./PostDetail.module.css";
 
+// --- Environment ---
+const WS_URL = import.meta.env.VITE_WS_URL;
+
 const PostDetail = ({
   postDetailUrl = "/blog/post/",
   commentsUrl = "/blog/post/comments/",
@@ -79,33 +82,46 @@ const PostDetail = ({
     (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.post_id === Number(postId)) {
-          if (typeof data.like_count === "number") {
-            setLikeCount(data.like_count);
-          }
-          if (
-            data.username === user?.username &&
-            typeof data.is_liked_by_me === "boolean"
-          ) {
-            setIsLiked(data.is_liked_by_me);
-          }
+        if (data.post_id !== Number(postId)) return;
+
+        if (typeof data.like_count === "number") {
+          setLikeCount(data.like_count);
+        }
+
+        // Use user.id (UUID) for identification
+        if (
+          data.user_id === user?.id &&
+          typeof data.is_liked_by_me === "boolean"
+        ) {
+          setIsLiked(data.is_liked_by_me);
         }
       } catch (err) {
         console.error("Failed to parse WebSocket message:", err);
       }
     },
-    [postId, user?.username],
+    [postId, user?.id],
   );
 
   useEffect(() => {
-    if (!postId) return;
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const host = window.location.host;
-    const socketUrl = `${protocol}://${host}/ws/like/`;
-    const socket = new WebSocket(socketUrl);
+    if (!postId || !WS_URL) return;
+
+    const socket = new WebSocket(`${WS_URL}/ws/like/`);
     socketRef.current = socket;
-    socket.onopen = () => console.log(`Connected to PostDetail #${postId}`);
+
+    socket.onopen = () => {
+      console.log(`Connected to PostDetail #${postId}`);
+    };
+
     socket.onmessage = onMessage;
+
+    socket.onerror = (error) => {
+      console.error("Like WebSocket error:", error);
+    };
+
+    socket.onclose = () => {
+      console.log("Like WebSocket closed.");
+    };
+
     return () => {
       if (
         socket.readyState === WebSocket.OPEN ||
@@ -168,12 +184,13 @@ const PostDetail = ({
     const nextIsLiked = !isLiked;
     setIsLiked(nextIsLiked);
     setLikeCount((prev) => (nextIsLiked ? prev + 1 : Math.max(0, prev - 1)));
+
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({
           message: {
             post_id: Number(postId),
-            username: user?.username || "anonymous",
+            uuid: user?.id, // send UUID
           },
         }),
       );
@@ -227,7 +244,7 @@ const PostDetail = ({
   const authorAvatar = getUserAvatar(authorUser);
   const authorInitial = authorName.charAt(0).toUpperCase();
 
-  // Check if current user is the author (compare IDs)
+  // Check if current user is the author (compare UUIDs)
   const isAuthor = user?.id === authorUser?.id;
 
   const coverImage = getAssetUrl(post?.post_img);
