@@ -417,8 +417,6 @@ class PostDetailView(APIView):
             BlogPost,
             id=post_id
         )
-
-
         if post.user != request.user:
 
             return Response(
@@ -428,27 +426,36 @@ class PostDetailView(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-
         serializer = PostSerializer(
             post,
             data=request.data,
             partial=True
         )
 
-
         serializer.is_valid(
             raise_exception=True
         )
-
         serializer.save()
-
-
         return Response(
             {
                 "post": serializer.data
             },
             status=status.HTTP_200_OK
         )
+    def delete(self, request, post_id):
+        post = BlogPost.objects.filter(id=post_id).first()
+        if not post:
+            return Response({"error": "Invalid post id."}, status=status.HTTP_400_BAD_REQUEST)
+
+        post_owner = post.user
+        user = request.user
+
+        if not user == post_owner:
+            return Response({"error": "You don't own this post."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        post.delete()
+        return Response({"detail": "Post deleted successfully."}, status=status.HTTP_200_OK)
+
 
 
 
