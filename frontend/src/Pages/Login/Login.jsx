@@ -10,7 +10,7 @@ import styles from "./Login.module.css";
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
-import { useUser } from "../../Context/UserContext";
+import { useUser } from "../../context/UserContext";
 
 const STATES = [
   { visualSrc: FoodVisual, color: "#FF5252" },
