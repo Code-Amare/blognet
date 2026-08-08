@@ -1,3 +1,4 @@
+// src/pages/EditPost/EditPost.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -7,7 +8,9 @@ import {
   MdVisibility,
   MdPalette,
   MdCategory,
+  MdWarning,
 } from "react-icons/md";
+import toast from "react-hot-toast"; // Added toast for notifications
 import api from "../../hooks/api";
 import { usePageTitle } from "../../Context/PageTitleContext";
 import styles from "./EditPost.module.css";
@@ -39,9 +42,15 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [existingImageUrl, setExistingImageUrl] = useState(null);
+
   const [postLoading, setPostLoading] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  // ---- Delete State ----
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const isDeletingRef = useRef(false); // Prevents double click executions
 
   // ---- Set page title ----
   useEffect(() => {
@@ -179,13 +188,34 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     }
 
     try {
-      const res = await api.patch(`/blog/edit-post/${postId}/`, formData);
+      await api.patch(`/blog/edit-post/${postId}/`, formData);
+      toast.success("Post updated successfully!");
       navigate(`/blog/post/${postId}`);
     } catch (error) {
       console.error("Error updating post:", error);
       setErrorMsg("Failed to update post. Please try again.");
     } finally {
       setUpdateLoading(false);
+    }
+  };
+
+  // ---- Delete Handler ----
+  const handleDeletePost = async () => {
+    if (isDeletingRef.current || deleting) return;
+
+    isDeletingRef.current = true;
+    setDeleting(true);
+
+    try {
+      await api.delete(`/blog/post/${postId}/`);
+      toast.success("Post deleted successfully.");
+      navigate("/blog"); // Adjust this route to your blog feed/dashboard
+    } catch (err) {
+      console.error("Error deleting post:", err);
+      toast.error("Failed to delete post.");
+      isDeletingRef.current = false;
+      setDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -240,9 +270,18 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
         <div className={styles.headerRight}>
           <button
             type="button"
+            className={styles.deleteHeaderBtn}
+            onClick={() => setShowDeleteModal(true)}
+            disabled={updateLoading || deleting}
+            title="Delete Post"
+          >
+            <MdDelete />
+          </button>
+          <button
+            type="button"
             className={styles.submitBtn}
             onClick={handleSubmit}
-            disabled={updateLoading}
+            disabled={updateLoading || deleting}
           >
             {updateLoading ? "Updating..." : "Update Post"}
           </button>
@@ -397,6 +436,38 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
           </article>
         )}
       </main>
+
+      {/* ---- Delete Confirmation Modal ---- */}
+      {showDeleteModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <MdWarning className={styles.modalIcon} />
+              <h3>Are you absolutely sure?</h3>
+            </div>
+            <p className={styles.modalText}>
+              This action <strong>cannot be undone</strong>. This will
+              permanently delete your post and remove it from the blog.
+            </p>
+            <div className={styles.modalActions}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.dangerBtn}
+                onClick={handleDeletePost}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Yes, delete post"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

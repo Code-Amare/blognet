@@ -409,3 +409,131 @@
     padding: 1.25rem;
   }
 }
+
+
+/* ---- Header Right Content Layout ---- */
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ---- Delete Post Header Button ---- */
+.deleteHeaderBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background-color: var(--bg-secondary, #f3f4f6);
+  color: var(--color-error-text, #ef4444);
+  border: 1px solid var(--border-light, #e5e7eb);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.deleteHeaderBtn:hover:not(:disabled) {
+  background-color: var(--color-error-bg, #fee2e2);
+  border-color: var(--color-error-text, #ef4444);
+}
+
+.deleteHeaderBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---- Delete Confirmation Modal ---- */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: var(--bg-primary, #ffffff);
+  padding: 2rem;
+  border-radius: 1rem;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--border-light);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.modalIcon {
+  font-size: 1.5rem;
+  color: var(--color-error-text, #ef4444);
+}
+
+.modalHeader h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.modalText {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  margin-bottom: 1.75rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.cancelBtn {
+  padding: 0.625rem 1.25rem;
+  background-color: transparent;
+  border: 1px solid var(--border-light, #e5e7eb);
+  border-radius: 0.5rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background-color: var(--bg-secondary, #f3f4f6);
+}
+
+.dangerBtn {
+  padding: 0.625rem 1.25rem;
+  background-color: var(--color-error-text, #ef4444);
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+.dangerBtn:hover:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+.dangerBtn:disabled,
+.cancelBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
