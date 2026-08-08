@@ -45,7 +45,7 @@ def send_cookies(request, user):
         value=access_token,
         httponly=True,
         secure=True,
-        samesite="Lax",
+        samesite="None",
         max_age=60 * 15,
     )
 
@@ -54,7 +54,7 @@ def send_cookies(request, user):
         value=refresh_token,
         httponly=True,
         secure=True,
-        samesite="Lax",
+        samesite="None",
         max_age=60 * 60 * 24 * 7,
     )
 
@@ -64,7 +64,7 @@ def send_cookies(request, user):
         csrf_token,
         httponly=False,
         secure=True,
-        samesite="Lax",
+        samesite="None",
     )
 
     return response
