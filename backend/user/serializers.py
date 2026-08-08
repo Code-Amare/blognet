@@ -136,6 +136,9 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_date_of_birth(self, value):
         today = date.today()
 
+        if not value:
+            return None
+
         if value > today:
             raise serializers.ValidationError(
                 "Date of birth cannot be in the future."
@@ -269,11 +272,6 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
 
-    remove_profile_pic = serializers.BooleanField(
-        required=False,
-        write_only=True,
-        default=False,
-    )
     class Meta:
         model = User
         fields = [
@@ -283,17 +281,12 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             "gender",
             "phone_number",
             "profile_picture",
-            "remove_profile_pic",
         ]
         extra_kwargs = {
             "phone_number": {
                 "required": False,
                 "allow_null": True,
                 "allow_blank": True,
-            },
-            "profile_picture": {
-                "required": False,
-                "allow_null": True,
             },
             "date_of_birth": {
                 "required": False,
@@ -305,18 +298,11 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             },
         }
     def validate(self, attrs):
-        remove_profile_pic = attrs.get(
-            "remove_profile_pic",
-            False
-        )
-        # Allow removing picture even if no other changes exist
-        if remove_profile_pic:
-            return attrs
+        
         user = self.instance
         has_changes = False
         for field, value in attrs.items():
-            if field == "remove_profile_pic":
-                continue
+            
             current_value = getattr(
                 user,
                 field,
@@ -344,24 +330,6 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
 
 
     def update(self, instance, validated_data):
-
-        remove_profile_pic = validated_data.pop(
-            "remove_profile_pic",
-            False
-        )
-
-        if remove_profile_pic:
-
-            if instance.profile_picture:
-
-                import cloudinary.uploader
-
-                cloudinary.uploader.destroy(
-                    instance.profile_picture.public_id
-                )
-
-            # Remove Cloudinary picture
-            instance.profile_picture = None
 
 
         for attr, value in validated_data.items():

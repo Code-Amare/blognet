@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-^pufqq4ouq)927*rd79+yr0y+xq@44xu1=afaa-j@0pzkh+(7p"
+SECRET_KEY = os.getenv("SECRET_KEY", "secret_key")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
@@ -284,7 +284,7 @@ AUTHENTICATION_BACKENDS = [
 
 BREVO_SENDER_EMAIL=os.getenv("BREVO_SENDER_EMAIL")
 BREVO_API_KEY=os.getenv("BREVO_API_KEY")
-DEFAULT_SENDER_NAME="City Shop"
+DEFAULT_SENDER_NAME="Blognet"
 
 
 

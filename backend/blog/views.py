@@ -175,6 +175,7 @@ class BlogProfileView(APIView):
 
         if getattr(user, "profile_picture", None):
             profile_picture = user.profile_picture.url
+            profile_picture = profile_picture.replace("http://", "https://")
 
         return Response(
             {

@@ -59,6 +59,29 @@ class PostSerializer(serializers.ModelSerializer):
             is_liked=True,
         ).exists()
 
+    
+    def create(self, validated_data):
+        # These are serializer-only fields.
+        # They are NOT BlogPost model fields.
+        validated_data.pop("remove_post_img", None)
+
+        new_image = validated_data.pop(
+            "post_img_upload",
+            None
+        )
+
+        # Create the BlogPost using only actual model fields.
+        instance = BlogPost.objects.create(
+            **validated_data
+        )
+
+        # If an image was uploaded, assign it after creation.
+        if new_image:
+            instance.post_img = new_image
+            instance.save(update_fields=["post_img"])
+
+        return instance
+
     def update(self, instance, validated_data):
         remove_post_img = validated_data.pop(
             "remove_post_img",

@@ -23,6 +23,7 @@ from .views import (
     GetUserObjectView,
     IsTwoFaEnabledView,
     ToggleTwoFaView,
+    GetProfileView,
 )
 
 
@@ -32,6 +33,7 @@ urlpatterns = [
     path("me/", GetUserView.as_view(), name="get_current_user"),
     path("me/delete/", UserDeleteView.as_view(), name="delete_user"),
     path("profile/update/", UpdateProfileView.as_view(), name="update_profile"),
+    path("profile/", GetProfileView.as_view(), name="get_profile"),
     # refresh
     path("token/refresh/", RefreshTokenView.as_view(), name="refresh_token"),
     # auth

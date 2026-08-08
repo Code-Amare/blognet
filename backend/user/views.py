@@ -73,6 +73,7 @@ def send_cookies(request, user):
 class LoginView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
+    
     def post(self, request):
         email = request.data.get("email", "").strip()
         password = request.data.get("password", "").strip()
@@ -170,7 +171,7 @@ class LoginView(APIView):
 
         return send_cookies(request, user)
 
-
+ 
 class SendVerificationCodeView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -654,15 +655,6 @@ class LogoutView(APIView):
 @method_decorator(csrf_protect, name="dispatch")
 class UserDeleteView(APIView):
     def delete(self, request):
-        result = handle_verification_challenge(
-            request=request,
-            action=VerificationChallenge.Action.DELETE_ACCOUNT,
-            method=VerificationChallenge.Method.EMAIL_OTP,
-        )
-
-        if isinstance(result, Response):
-            # Challenge not yet completed – return the helper’s response
-            return result
 
         user = request.user
         user.delete()
@@ -672,7 +664,6 @@ class UserDeleteView(APIView):
             status=status.HTTP_200_OK,
         )
 
-        # Clear auth cookies
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
         response.delete_cookie("csrftoken")
@@ -897,7 +888,14 @@ class UpdateProfileView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-    
+
+
+class GetProfileView(APIView):
+    def get(self, request):
+        profile, created = Profile.objects.get_or_create(user=request.user)
+
+        serializer = ProfileSerializer(profile)
+        return Response({"profile": serializer.data}, status=status.HTTP_200_OK)
 
 @method_decorator(csrf_protect, name="dispatch")
 class EmailUpdateRequestView(APIView):
@@ -1054,38 +1052,6 @@ class GetUserObjectView(APIView):
             return Response({"error": "Invalid id."}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"user": UserSerializer(user).data}, status=status.HTTP_200_OK)
-
-
-class ProfileUpdateView(APIView):
-
-    def patch(self, request):
-        profile, created = Profile.objects.get_or_create(
-            user=request.user
-        )
-
-        serializer = ProfileSerializer(
-            profile,
-            data=request.data,
-            partial=True,
-        )
-
-        if serializer.is_valid():
-            serializer.save()
-
-            return Response(
-                {
-                    "message": "Profile updated successfully.",
-                    "profile": serializer.data,
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        return Response(
-            {
-                "errors": serializer.errors,
-            },
-            status=status.HTTP_400_BAD_REQUEST,
-        )
 
 
 class IsTwoFaEnabledView(APIView):

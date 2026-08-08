@@ -9,7 +9,7 @@ from django.conf import settings
 def send_email(
     to_email: str,
     subject: str,
-    html_content: str,
+    html_content: str, 
     sender_name: str = settings.DEFAULT_SENDER_NAME,
     sender_email: str = None,
 ):
