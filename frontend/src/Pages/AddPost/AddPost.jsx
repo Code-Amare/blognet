@@ -131,7 +131,7 @@ const AddPost = ({
     const formData = new FormData();
     formData.append("post_title", postTitle);
     formData.append("post_body", postBody);
-    if (file) formData.append("post_img", file);
+    if (file) formData.append("post_img_upload", file);
     formData.append("post_title_color", color);
     formData.append("post_category", category);
 

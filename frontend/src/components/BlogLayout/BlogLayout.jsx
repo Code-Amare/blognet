@@ -46,6 +46,7 @@ const BlogLayout = () => {
   else if (path.includes("/add-post")) currentPage = "add-post";
   else if (path.includes("/account/edit")) currentPage = "edit-account";
   else if (path.includes("/account")) currentPage = "account";
+  else if (path.includes("/security")) currentPage = "security";
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => {
