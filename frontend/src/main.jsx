@@ -7,7 +7,7 @@ import { BrowserRouter } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { PageTitleProvider } from "./context/PageTitleContext.jsx";
 import { SiteInfoProvider } from "./context/SiteInfoContext.jsx";
-import { UserProvider } from "./Context/UserContext.jsx";
+import { UserProvider } from "./context/UserContext.jsx";
 import { ToastProvider } from "./components/ToastProvider.jsx";
 
 createRoot(document.getElementById("root")).render(
