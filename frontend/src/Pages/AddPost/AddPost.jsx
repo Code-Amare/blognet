@@ -268,13 +268,13 @@ const AddPost = ({
                           }`}
                           style={{
                             backgroundColor: isSelected
-                              ? "var(--color-info-text)"
+                              ? "var(--color-accent)"
                               : "var(--bg-primary)",
                             color: isSelected
                               ? "var(--bg-primary)"
                               : "var(--text-primary)",
                             border: isSelected
-                              ? "1px solid var(--color-info-text)"
+                              ? "1px solid var(--color-accent)"
                               : "1px solid var(--border-input)",
                             cursor: "pointer",
                             pointerEvents: "auto",
