@@ -22,7 +22,6 @@ const VerifyEmail = ({ interval = 8000 }) => {
   const [searchParams] = useSearchParams();
   const { updatePageTitle } = usePageTitle();
 
-  // Get email from query param (e.g., ?email=user@example.com)
   const email = searchParams.get("email") || "";
 
   const [code, setCode] = useState("");
@@ -34,10 +33,14 @@ const VerifyEmail = ({ interval = 8000 }) => {
   const codeInputRef = useRef(null);
 
   useEffect(() => {
+    // Preload images to prevent flickering (matches Login logic)
+    STATES.forEach((state) => {
+      const img = new Image();
+      img.src = state.visualSrc;
+    });
     updatePageTitle("Verify Email");
   }, [updatePageTitle]);
 
-  // Rotate visual background
   useEffect(() => {
     const timer = setInterval(() => {
       setIndex((prev) => (prev + 1) % STATES.length);
@@ -45,7 +48,6 @@ const VerifyEmail = ({ interval = 8000 }) => {
     return () => clearInterval(timer);
   }, [interval]);
 
-  // Focus input on mount
   useEffect(() => {
     codeInputRef.current?.focus();
   }, []);
@@ -69,7 +71,6 @@ const VerifyEmail = ({ interval = 8000 }) => {
     setIsLoading(true);
 
     try {
-      // ✅ Correct backend endpoint
       const response = await api.post("/user/email/verify/", {
         email,
         code,
@@ -77,17 +78,17 @@ const VerifyEmail = ({ interval = 8000 }) => {
 
       toast.success(response.data.detail || "Email verified successfully!");
 
-      // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate("/login");
       }, 2000);
     } catch (error) {
       const data = error.response?.data;
-      const msg =
-        data?.error || data?.detail || "Invalid verification code.";
+      const msg = data?.error || data?.detail || "Invalid verification code.";
       toast.error(msg);
       if (data?.remaining_attempts !== undefined) {
-        setFieldError(`Invalid code. ${data.remaining_attempts} attempts left.`);
+        setFieldError(
+          `Invalid code. ${data.remaining_attempts} attempts left.`,
+        );
       }
     } finally {
       setIsLoading(false);
@@ -105,11 +106,7 @@ const VerifyEmail = ({ interval = 8000 }) => {
     setResending(true);
 
     try {
-      // ✅ Correct backend endpoint
-      const response = await api.post("/user/send-otp/", {
-        email,
-      });
-
+      const response = await api.post("/user/send-otp/", { email });
       toast.success(response.data.detail || "Verification code resent.");
     } catch (error) {
       const msg =
@@ -134,7 +131,6 @@ const VerifyEmail = ({ interval = 8000 }) => {
       />
 
       <main className={styles.mainWrapper}>
-        {/* Form Section */}
         <section className={styles.formSection}>
           <div className={styles.formCard}>
             <div className={styles.headerBack}>
@@ -148,18 +144,17 @@ const VerifyEmail = ({ interval = 8000 }) => {
               </button>
             </div>
 
-            <h1 className={styles.title}>Verify Your Email</h1>
+            <h1 className={styles.title}>Verify Email</h1>
             <p className={styles.subtitle}>
-              Enter the 6‑digit code sent to your email
+              Enter the 6‑digit code sent to{" "}
+              {email ? (
+                <span className={styles.emailHighlight}>{email}</span>
+              ) : (
+                "your email"
+              )}
             </p>
 
-            {email && (
-              <div className={styles.emailChip}>
-                <span>{email}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleVerify} className={styles.form}>
+            <form onSubmit={handleVerify} className={styles.form} noValidate>
               <div className={styles.inputGroup}>
                 <label htmlFor="code" className={styles.label}>
                   Verification Code
@@ -168,13 +163,13 @@ const VerifyEmail = ({ interval = 8000 }) => {
                   ref={codeInputRef}
                   id="code"
                   type="text"
+                  placeholder="000000"
+                  maxLength={6}
                   value={code}
                   onChange={(e) => {
                     setCode(e.target.value);
                     if (fieldError) setFieldError("");
                   }}
-                  placeholder="000000"
-                  maxLength={6}
                   disabled={isLoading}
                   className={`${styles.input} ${styles.codeInput} ${
                     fieldError ? styles.inputError : ""
@@ -194,28 +189,25 @@ const VerifyEmail = ({ interval = 8000 }) => {
               </button>
             </form>
 
-            <div className={styles.resendContainer}>
-              <span className={styles.resendText}>
-                Didn't receive the code?
-              </span>
+            <p className={styles.footerText}>
+              Didn't receive the code?{" "}
               <button
                 type="button"
                 onClick={resendCode}
                 disabled={resending}
-                className={styles.resendBtn}
+                className={styles.linkBtn}
               >
                 {resending ? "Sending..." : "Resend Code"}
               </button>
-            </div>
+            </p>
           </div>
         </section>
 
-        {/* Visual Section */}
         <section className={styles.visualSection}>
           <div className={styles.visualWrapper}>
             <img
               src={current.visualSrc}
-              alt="Visual"
+              alt="Category Visual"
               className={styles.visualImg}
             />
           </div>
