@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { MdLogout } from "react-icons/md";
-import { useUser } from "../../Context/UserContext";
+import { useUser } from "../../context/UserContext";
 import styles from "./LogoutModal.module.css";
 
 const LogoutModal = ({ isOpen, onClose }) => {

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import styles from "./ForgotPassword.module.css";
 import HomeNav from "../../components/HomeNav/HomeNav";
 import api from "../../hooks/api";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 
 // Visual Assets
 import FoodVisual from "../../assets/Hamburger.gif";

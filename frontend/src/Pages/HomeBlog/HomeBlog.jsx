@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import Post from "../../components/Post/Post";
 import PostBlank from "../../components/PostBlank/PostBlank";
 import api from "../../hooks/api";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 import styles from "./HomeBlog.module.css";
 
 const HomeBlog = () => {

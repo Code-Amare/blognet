@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft, FiEye, FiEyeOff } from "react-icons/fi";
 
 import api from "../../hooks/api";
-import { useSiteInfo } from "../../Context/SiteInfoContext";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { useSiteInfo } from "../../context/SiteInfoContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 import styles from "./ResetPassword.module.css";
 
 const ResetPassword = () => {

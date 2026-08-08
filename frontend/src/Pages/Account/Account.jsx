@@ -10,8 +10,8 @@ import {
   FaRegNewspaper,
   FaUserEdit,
 } from "react-icons/fa";
-import { useUser } from "../../Context/UserContext";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { useUser } from "../../context/UserContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 import api from "../../hooks/api";
 import styles from "./Account.module.css";
 

@@ -3,7 +3,7 @@ import { FaHeart, FaRegHeart, FaArrowRight } from "react-icons/fa";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import numeral from "numeral";
 import { Link } from "react-router-dom";
-import { useUser } from "../../Context/UserContext";
+import { useUser } from "../../context/UserContext";
 import styles from "./Post.module.css";
 
 const MAX_BODY_LENGTH = 120;

@@ -12,7 +12,7 @@ import {
 } from "react-icons/md";
 import toast from "react-hot-toast"; // Added toast for notifications
 import api from "../../hooks/api";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 import styles from "./EditPost.module.css";
 import defaultImg from "../../assets/defaultImg.png";
 

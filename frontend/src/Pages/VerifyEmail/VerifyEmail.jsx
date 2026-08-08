@@ -4,7 +4,7 @@ import { FiArrowLeft } from "react-icons/fi";
 import toast from "react-hot-toast";
 import HomeNav from "../../components/HomeNav/HomeNav";
 import api from "../../hooks/api";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 import styles from "./VerifyEmail.module.css";
 
 import FoodVisual from "../../assets/Hamburger.gif";

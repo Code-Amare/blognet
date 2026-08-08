@@ -14,8 +14,8 @@ import styles from "./BlogLayout.module.css";
 import fallbackLogo from "../../assets/logo.png";
 import LogoutModal from "../../components/LogoutModal/LogoutModal";
 
-import { useUser } from "../../Context/UserContext";
-import { useSiteInfo } from "../../Context/SiteInfoContext";
+import { useUser } from "../../context/UserContext";
+import { useSiteInfo } from "../../context/SiteInfoContext";
 
 const BlogLayout = () => {
   const navigate = useNavigate();

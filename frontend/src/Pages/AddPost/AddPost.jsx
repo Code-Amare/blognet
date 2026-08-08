@@ -9,7 +9,7 @@ import {
   MdCategory,
 } from "react-icons/md";
 import api from "../../hooks/api";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 import styles from "./AddPost.module.css";
 import defaultImg from "../../assets/defaultImg.png";
 

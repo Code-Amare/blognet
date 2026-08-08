@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useSiteInfo } from "../../Context/SiteInfoContext";
-import { useUser } from "../../Context/UserContext";
+import { useSiteInfo } from "../../context/SiteInfoContext";
+import { useUser } from "../../context/UserContext";
 import styles from "./HomeNav.module.css";
 
 const HomeNav = ({ currentPage, bgColor, isSticky = true }) => {

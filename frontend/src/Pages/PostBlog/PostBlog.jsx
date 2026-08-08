@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import styles from "./PostBlog.module.css";
 import Post from "../../components/Post/Post";
-import api from "../../hooks/api"; // ✅ new
-import { usePageTitle } from "../../Context/PageTitleContext"; // ✅ new
+import api from "../../hooks/api";
+import { usePageTitle } from "../../context/PageTitleContext";
 
 const PostBlog = () => {
   const [posts, setPosts] = useState([]);

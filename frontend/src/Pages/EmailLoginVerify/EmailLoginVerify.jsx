@@ -3,10 +3,10 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
 
 import api from "../../hooks/api";
-import { useSiteInfo } from "../../Context/SiteInfoContext";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { useSiteInfo } from "../../context/SiteInfoContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 import styles from "./EmailLoginVerify.module.css";
-import { useUser } from "../../Context/UserContext";
+import { useUser } from "../../context/UserContext";
 
 const EmailLoginVerify = () => {
   const navigate = useNavigate();

@@ -13,8 +13,8 @@ import {
 } from "react-icons/fa";
 import { MdEdit } from "react-icons/md";
 import api from "../../hooks/api";
-import { useUser } from "../../Context/UserContext";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { useUser } from "../../context/UserContext";
+import { usePageTitle } from "../../context/PageTitleContext";
 import styles from "./PostDetail.module.css";
 
 // --- Environment ---

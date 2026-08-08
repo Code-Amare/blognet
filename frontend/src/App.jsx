@@ -10,7 +10,7 @@ import Logout from "./Pages/Logout/Logout";
 
 import ForgotPassword from "./Pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "./Pages/ResetPassword/ResetPassword";
-import { useUser } from "./Context/UserContext";
+import { useUser } from "./context/UserContext";
 import VerifyEmail from "./Pages/VerifyEmail/VerifyEmail";
 import EmailLoginVerify from "./Pages/EmailLoginVerify/EmailLoginVerify";
 

@@ -8,8 +8,8 @@ import api from "../../hooks/api";
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
-import { usePageTitle } from "../../Context/PageTitleContext";
-import { useUser } from "../../Context/UserContext";
+import { usePageTitle } from "../../context/PageTitleContext";
+import { useUser } from "../../context/UserContext";
 import toast from "react-hot-toast";
 
 const STATES = [
