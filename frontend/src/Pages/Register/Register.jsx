@@ -9,6 +9,8 @@ import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
 import { usePageTitle } from "../../Context/PageTitleContext";
+import { useUser } from "../../Context/UserContext";
+import toast from "react-hot-toast";
 
 const STATES = [
   { visualSrc: FoodVisual, color: "#FF5252" },
@@ -32,6 +34,7 @@ const Register = ({ interval = 8000 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [index, setIndex] = useState(0);
+  const { login } = useUser();
 
   const navigate = useNavigate();
   const { updatePageTitle } = usePageTitle();
@@ -54,12 +57,6 @@ const Register = ({ interval = 8000 }) => {
   }, [interval]);
 
   const current = STATES[index];
-
-  const handleAuthSuccess = (data) => {
-    if (data.access) localStorage.setItem("access", data.access);
-    if (data.refresh) localStorage.setItem("refresh", data.refresh);
-    navigate("/blog");
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -92,6 +89,7 @@ const Register = ({ interval = 8000 }) => {
         gender: gender || null,
         phone_number: phoneNumber || null,
       });
+      toast.success("Account created successfully");
       navigate("/login");
     } catch (err) {
       const data = err.response?.data;
@@ -121,10 +119,20 @@ const Register = ({ interval = 8000 }) => {
       setIsGoogleSubmitting(true);
 
       try {
-        const response = await api.post("/user/register/google/", {
-          token: tokenResponse.access_token,
-        });
-        handleAuthSuccess(response.data);
+        const response = await api.post(
+          "/user/register/google/",
+          {
+            token: tokenResponse.access_token,
+          },
+          {
+            skipAutoRefresh: true,
+          },
+        );
+        toast.success("Account created successfully");
+
+        const user = response.data?.user;
+        login(user);
+        navigate("/blog");
       } catch (err) {
         const errorMsg =
           err.response?.data?.errors || err.response?.data?.error;

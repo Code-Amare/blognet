@@ -1,5 +1,4 @@
-// src/pages/Security/Security.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
@@ -17,13 +16,18 @@ import styles from "./Security.module.css";
 
 const Security = () => {
   const navigate = useNavigate();
-  const { user, setUser } = useUser();
+  const { user, clearUser } = useUser();
   const { updatePageTitle } = usePageTitle();
 
   const [loading, setLoading] = useState(true);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // State for UI updates (disabling buttons, changing text)
   const [deleting, setDeleting] = useState(false);
+
+  // Ref to synchronously block double-clicks
+  const isDeletingRef = useRef(false);
 
   // Password
   const [currentPassword, setCurrentPassword] = useState("");
@@ -84,20 +88,22 @@ const Security = () => {
 
   // ---- Delete Account ----
   const handleDeleteAccount = async () => {
+    // 1. Synchronous check blocks immediate double clicks
+    if (isDeletingRef.current || deleting) return;
+
+    isDeletingRef.current = true;
     setDeleting(true);
+
     try {
       await api.delete("/user/me/delete/");
       toast.success("Account deleted successfully.");
-      setUser(null); // clear user context
-      // Redirect to home after a short delay
-      setTimeout(() => {
-        navigate("/");
-        window.location.reload(); // ensure full reset
-      }, 1000);
+      clearUser(null); 
+      navigate("/");
     } catch (err) {
       const msg = err.response?.data?.error || "Failed to delete account.";
       toast.error(msg);
-    } finally {
+      // Only reset if it failed, so we don't accidentally try again while navigating away
+      isDeletingRef.current = false;
       setDeleting(false);
       setShowDeleteModal(false);
     }

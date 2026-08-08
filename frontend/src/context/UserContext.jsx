@@ -82,6 +82,11 @@ export function UserProvider({ children }) {
     }
   };
 
+  const clearUser = () => {
+    setUser(null);
+    setLoading(false);
+  };
+
   return (
     <UserContext.Provider
       value={{
@@ -91,6 +96,7 @@ export function UserProvider({ children }) {
         logout,
         getUser,
         updateProfile,
+        clearUser,
         isAuthenticated: !!user,
       }}
     >
