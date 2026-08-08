@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from "react";
-import styles from "./Login.module.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
+import toast from "react-hot-toast";
 import HomeNav from "../../components/HomeNav/HomeNav";
 import api from "../../hooks/api";
+import { usePageTitle } from "../../Context/PageTitleContext";
+import styles from "./Login.module.css";
+
 import FoodVisual from "../../assets/Hamburger.gif";
 import EduVisual from "../../assets/Learning.gif";
 import TechVisual from "../../assets/Robotarm.gif";
-import { usePageTitle } from "../../Context/PageTitleContext";
+import { useUser } from "../../Context/UserContext";
 
 const STATES = [
   { visualSrc: FoodVisual, color: "#FF5252" },
@@ -18,12 +21,12 @@ const STATES = [
 const Login = ({ interval = 8000 }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [generalError, setGeneralError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [index, setIndex] = useState(0);
   const navigate = useNavigate();
   const { updatePageTitle } = usePageTitle();
+  const { login } = useUser();
 
   useEffect(() => {
     STATES.forEach((state) => {
@@ -31,7 +34,7 @@ const Login = ({ interval = 8000 }) => {
       img.src = state.visualSrc;
     });
     updatePageTitle("Login");
-  }, []);
+  }, [updatePageTitle]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -42,35 +45,48 @@ const Login = ({ interval = 8000 }) => {
 
   const current = STATES[index];
 
-  const handleAuthSuccess = (data) => {
-    if (data.access) localStorage.setItem("access", data.access);
-    if (data.refresh) localStorage.setItem("refresh", data.refresh);
-    navigate("/blog");
-  };
-
-  const getErrorMessage = (err) => {
-    const errorMsg = err?.response?.data?.errors || err?.response?.data?.error;
-    if (typeof errorMsg === "string") return errorMsg;
-    if (typeof errorMsg === "object" && errorMsg !== null) {
-      return errorMsg.detail || "Invalid credentials";
-    }
-    return "Something went wrong. Please try again.";
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setGeneralError("");
-    setIsSubmitting(true);
+
     if (!email || !password) {
-      setGeneralError("Please fill in all fields.");
-      setIsSubmitting(false);
+      toast.error("Please fill in all fields.");
       return;
     }
+
+    setIsSubmitting(true);
+
     try {
-      const response = await api.post("/user/login/", { email, password });
-      handleAuthSuccess(response.data);
+      const response = await api.post(
+        "/user/login/",
+        { email, password },
+        { skipAuthRefresh: true },
+      );
+      const data = response.data;
+
+      // ----- Unverified user -----
+      if (data.verification_required) {
+        toast.error(data.error || "Your email is not verified.");
+        // Navigate to verify page after a short delay
+        setTimeout(() => {
+          navigate(`/verify-email?email=${encodeURIComponent(email)}`);
+        }, 1500);
+        return;
+      }
+
+      // ----- Two-factor login link sent -----
+      if (data.twofa_required) {
+        toast.success(
+          data.detail || "A login link has been sent to your email.",
+        );
+        // Optionally clear password field
+        setPassword("");
+        return;
+      }
+      navigate("/blog");
     } catch (error) {
-      setGeneralError(getErrorMessage(error));
+      const errData = error.response?.data;
+      const msg = errData?.error || errData?.detail || "Invalid credentials.";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -78,31 +94,45 @@ const Login = ({ interval = 8000 }) => {
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      setGeneralError("");
       setIsGoogleSubmitting(true);
       try {
-        const response = await api.post("/user/login/google/", {
-          token: tokenResponse.access_token,
-        });
-        handleAuthSuccess(response.data);
+        const response = await api.post(
+          "/user/login/google/",
+          {
+            token: tokenResponse.access_token,
+          },
+          {
+            skipAuthRefresh: true,
+          },
+        );
+        const data = response.data;
+
+        if (data.error) {
+          toast.error(data.error);
+        } else {
+          const user = data?.user;
+          if (user) {
+            login(user);
+          }
+          navigate("/blog");
+        }
       } catch (error) {
-        setGeneralError(getErrorMessage(error));
+        const errData = error.response?.data;
+        const msg = errData?.error || errData?.detail || "Google login failed.";
+        toast.error(msg);
       } finally {
         setIsGoogleSubmitting(false);
       }
     },
-    onError: (errorResponse) => {
-      console.error("Google Authorization Error:", errorResponse);
-      setGeneralError("Google login authorization failed.");
+    onError: () => {
+      toast.error("Google login authorization failed.");
     },
   });
 
   return (
     <div
       className={styles.loginContainer}
-      style={{
-        "--accent-color": current.color,
-      }}
+      style={{ "--accent-color": current.color }}
     >
       <HomeNav
         currentPage="signIn"
@@ -115,23 +145,6 @@ const Login = ({ interval = 8000 }) => {
           <div className={styles.formCard}>
             <h1 className={styles.title}>Welcome Back</h1>
             <p className={styles.subtitle}>Sign in to continue to BlogNet</p>
-
-            {generalError && (
-              <div className={styles.errorBanner} role="alert">
-                <svg
-                  className={styles.errorIcon}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <span>{generalError}</span>
-              </div>
-            )}
 
             <button
               type="button"
@@ -176,9 +189,7 @@ const Login = ({ interval = 8000 }) => {
                   Email Address
                 </label>
                 <input
-                  className={`${styles.input} ${
-                    generalError ? styles.inputError : ""
-                  }`}
+                  className={styles.input}
                   type="email"
                   id="email"
                   placeholder="name@example.com"
@@ -193,9 +204,7 @@ const Login = ({ interval = 8000 }) => {
                   Password
                 </label>
                 <input
-                  className={`${styles.input} ${
-                    generalError ? styles.inputError : ""
-                  }`}
+                  className={styles.input}
                   type="password"
                   id="password"
                   placeholder="Enter your password"

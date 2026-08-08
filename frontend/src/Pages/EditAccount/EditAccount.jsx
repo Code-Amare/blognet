@@ -10,6 +10,7 @@ import {
   FaCalendar,
   FaVenusMars,
 } from "react-icons/fa";
+import toast from "react-hot-toast";
 import api from "../../hooks/api";
 import { useUser } from "../../Context/UserContext";
 import { usePageTitle } from "../../Context/PageTitleContext";
@@ -35,7 +36,6 @@ const EditAccount = () => {
   const [avatarFile, setAvatarFile] = useState(null);
   const [removeAvatar, setRemoveAvatar] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
-  const [feedback, setFeedback] = useState({ type: "", message: "" });
 
   // ---- Set page title ----
   useEffect(() => {
@@ -47,7 +47,7 @@ const EditAccount = () => {
     const fetchProfile = async () => {
       try {
         const response = await api.get("/user/me/");
-        const userData = response.data.user; // backend wraps user object
+        const userData = response.data.user;
         setProfileData(userData);
         setFormData({
           first_name: userData.first_name || "",
@@ -57,14 +57,10 @@ const EditAccount = () => {
           phone_number: userData.phone_number || "",
         });
         if (userData.profile_picture) {
-          setAvatarPreview(userData.profile_picture); // full URL from Cloudinary
+          setAvatarPreview(userData.profile_picture);
         }
       } catch (error) {
-        console.error("Profile fetch error:", error);
-        setFeedback({
-          type: "error",
-          message: "Failed to load account settings.",
-        });
+        toast.error("Failed to load account settings.");
       } finally {
         setProfileLoading(false);
       }
@@ -95,17 +91,11 @@ const EditAccount = () => {
     setRemoveAvatar(true);
   };
 
-  const initialLetter = (
-    user?.firstName || // fallback from context (still loading)
-    "?"
-  )
-    .charAt(0)
-    .toUpperCase();
+  const initialLetter = (user?.firstName || "?").charAt(0).toUpperCase();
 
   // ---- Submit handler ----
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setFeedback({ type: "", message: "" });
     setUpdateLoading(true);
 
     const submitData = new FormData();
@@ -125,22 +115,22 @@ const EditAccount = () => {
       await api.patch("/user/profile/update/", submitData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setFeedback({
-        type: "success",
-        message: "Profile updated successfully!",
-      });
+      toast.success("Profile updated successfully!");
       // Reload to reflect changes (user context will be refreshed)
-      window.location.reload();
+      setTimeout(() => window.location.reload(), 800);
     } catch (error) {
-      console.error("Update error:", error);
       const errData = error.response?.data;
-      setFeedback({
-        type: "error",
-        message:
+      const isNoChange =
+        errData?.is_no_change === true || errData?.is_no_change === "True";
+      if (isNoChange) {
+        toast.error("No changes were made.");
+      } else {
+        const message =
           typeof errData?.errors === "string"
             ? errData.errors
-            : errData?.detail || "Failed to update profile.",
-      });
+            : errData?.detail || "Failed to update profile.";
+        toast.error(message);
+      }
     } finally {
       setUpdateLoading(false);
     }
@@ -173,18 +163,6 @@ const EditAccount = () => {
         <h1>Edit Profile</h1>
         <p>Update your personal information and photo</p>
       </div>
-
-      {feedback.message && (
-        <div
-          className={`${styles.alert} ${
-            feedback.type === "success"
-              ? styles.alertSuccess
-              : styles.alertError
-          }`}
-        >
-          {feedback.message}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit} className={styles.editForm}>
         {/* Avatar Section */}
@@ -230,7 +208,7 @@ const EditAccount = () => {
 
         <hr className={styles.divider} />
 
-        {/* Fields matching UpdateProfileSerializer */}
+        {/* Fields */}
         <div className={styles.rowGrid}>
           <div className={styles.fieldGroup}>
             <label className={styles.label}>

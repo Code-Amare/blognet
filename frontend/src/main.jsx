@@ -8,19 +8,22 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { PageTitleProvider } from "./context/PageTitleContext.jsx";
 import { SiteInfoProvider } from "./context/SiteInfoContext.jsx";
 import { UserProvider } from "./Context/UserContext.jsx";
+import { ToastProvider } from "./components/ToastProvider.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
-      <UserProvider>
-        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+        <UserProvider>
           <SiteInfoProvider>
             <PageTitleProvider>
-              <App />
+              <ToastProvider>
+                <App />
+              </ToastProvider>
             </PageTitleProvider>
           </SiteInfoProvider>
-        </GoogleOAuthProvider>
-      </UserProvider>
+        </UserProvider>
+      </GoogleOAuthProvider>
     </BrowserRouter>
   </StrictMode>,
 );

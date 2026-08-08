@@ -29,4 +29,11 @@
   --color-success-bg: #f0fdf4;
   --color-success-border: #bbf7d0;
   --color-success-text: #16a34a;
+
+   --surface: #ffffff;          /* or use var(--bg-primary) */
+  --foreground: #0f172a;       /* or var(--text-primary) */
+  --border: #e2e8f0;           /* or var(--border-light) */
+  --success: #16a34a;          /* or var(--color-success-text) */
+  --danger: #dc2626;           /* or var(--color-error-text) */
+  --primary: #FF5252;          /* or var(--color-accent) */
 }

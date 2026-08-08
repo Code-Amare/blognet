@@ -319,10 +319,10 @@ const Register = ({ interval = 8000 }) => {
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
                 >
-                  <option value="">Prefer not to say</option>
-                  <option value="M">Male</option>
-                  <option value="F">Female</option>
-                  <option value="O">Other</option>
+                  <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
                 </select>
                 {fieldErrors.gender && (
                   <span className={styles.fieldError}>

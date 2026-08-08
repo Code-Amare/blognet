@@ -7,6 +7,7 @@ import AddPost from "../AddPost/AddPost";
 import PostDetail from "../PostDetail/PostDetail";
 import BlogLayout from "../../components/BlogLayout/BlogLayout";
 import EditPost from "../EditPost/EditPost";
+import Security from "../Security/Security";
 
 const Blog = () => {
   return (
@@ -19,6 +20,7 @@ const Blog = () => {
         <Route path="post/" element={<PostBlog />} />
         <Route path="account/" element={<Account />} />
         <Route path="account/edit/" element={<EditAccount />} />
+        <Route path="/security" element={<Security />} />
       </Route>
     </Routes>
   );

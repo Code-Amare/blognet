@@ -7,6 +7,7 @@ import {
   MdMenuBook,
   MdPerson,
   MdLogout,
+  MdSecurity,
 } from "react-icons/md";
 
 import styles from "./BlogLayout.module.css";
@@ -28,11 +29,9 @@ const BlogLayout = () => {
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Destructure user context (new shape)
   const { user, loading } = useUser();
   const { siteInfo } = useSiteInfo();
 
-  // Redirect unauthenticated users
   useEffect(() => {
     if (!loading && !user?.isAuthenticated) {
       navigate("/login");
@@ -41,7 +40,9 @@ const BlogLayout = () => {
 
   // Determine current page for active sidebar item
   let currentPage = "blog";
-  if (path.includes("/post")) currentPage = "post";
+  if (path.includes("/settings/security")) currentPage = "security";
+  else if (path.includes("/settings")) currentPage = "settings";
+  else if (path.includes("/post")) currentPage = "post";
   else if (path.includes("/add-post")) currentPage = "add-post";
   else if (path.includes("/account/edit")) currentPage = "edit-account";
   else if (path.includes("/account")) currentPage = "account";
@@ -55,7 +56,6 @@ const BlogLayout = () => {
   };
 
   const handleNavClick = (route) => {
-    // Close sidebar on mobile
     if (window.innerWidth <= 768) {
       setIsSidebarOpen(false);
       localStorage.setItem("sidebarOpen", JSON.stringify(false));
@@ -72,8 +72,7 @@ const BlogLayout = () => {
     );
   }
 
-  // Dynamic values from new user object
-  const avatarUrl = user?.profilePicture; // full Cloudinary URL
+  const avatarUrl = user?.profilePicture;
   const displayName = user?.fullName || user?.firstName || "Account";
   const brandName = siteInfo?.siteName || "BlogNet";
   const logoUrl = siteInfo?.siteLogoUrl || fallbackLogo;
@@ -126,7 +125,7 @@ const BlogLayout = () => {
         {isSidebarOpen && (
           <div
             className={styles.mobileBackdrop}
-            onClick={() => handleNavClick()} // closes sidebar
+            onClick={() => handleNavClick()}
           />
         )}
 
@@ -182,8 +181,16 @@ const BlogLayout = () => {
               </li>
 
               <li
+                onClick={() => handleNavClick("/blog/security")}
+                className={currentPage === "security" ? styles.currentPage : ""}
+              >
+                <MdSecurity className={styles.navIcon} />
+                <span>Security</span>
+              </li>
+
+              <li
                 onClick={() => {
-                  handleNavClick(); // close sidebar if open
+                  handleNavClick();
                   setShowLogoutModal(true);
                 }}
                 className={styles.logoutItem}
@@ -200,7 +207,6 @@ const BlogLayout = () => {
         </main>
       </div>
 
-      {/* LogoutModal – now self‑contained, no onConfirm needed */}
       <LogoutModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}

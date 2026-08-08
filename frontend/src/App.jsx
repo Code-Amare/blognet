@@ -11,6 +11,7 @@ import Logout from "./Pages/Logout/Logout";
 import ForgotPassword from "./Pages/ForgotPassword/ForgotPassword";
 import ResetPassword from "./Pages/ResetPassword/ResetPassword";
 import { useUser } from "./Context/UserContext";
+import VerifyEmail from "./Pages/VerifyEmail/VerifyEmail";
 
 function App() {
   const navigate = useNavigate();
@@ -36,6 +37,7 @@ function App() {
 
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/password/reset/:code" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
 
       <Route path="/blog/*" element={<Blog />} />
     </Routes>
