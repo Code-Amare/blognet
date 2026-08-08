@@ -63,24 +63,26 @@ const Login = ({ interval = 8000 }) => {
       );
       const data = response.data;
 
-      // ----- Unverified user -----
-      if (data.verification_required) {
+      if (data?.verification_required) {
         toast.error(data.error || "Your email is not verified.");
-        // Navigate to verify page after a short delay
+
         setTimeout(() => {
           navigate(`/verify-email?email=${encodeURIComponent(email)}`);
         }, 1500);
         return;
       }
 
-      // ----- Two-factor login link sent -----
       if (data.twofa_required) {
         toast.success(
           data.detail || "A login link has been sent to your email.",
         );
-        // Optionally clear password field
+
         setPassword("");
         return;
+      }
+      const user = data?.user;
+      if (user) {
+        login(user);
       }
       navigate("/blog");
     } catch (error) {
