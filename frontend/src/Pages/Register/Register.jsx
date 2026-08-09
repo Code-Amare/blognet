@@ -34,7 +34,7 @@ const Register = ({ interval = 8000 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [index, setIndex] = useState(0);
-  const { login } = useUser();
+  const { login, getUser } = useUser();
 
   const navigate = useNavigate();
   const { updatePageTitle } = usePageTitle();
@@ -131,7 +131,8 @@ const Register = ({ interval = 8000 }) => {
         toast.success("Account created successfully");
 
         const user = response.data?.user;
-        login(user);
+        console.log(user);
+        getUser();
         navigate("/blog");
       } catch (err) {
         const errorMsg =

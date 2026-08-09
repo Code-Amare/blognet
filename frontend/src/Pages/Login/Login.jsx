@@ -26,7 +26,7 @@ const Login = ({ interval = 8000 }) => {
   const [index, setIndex] = useState(0);
   const navigate = useNavigate();
   const { updatePageTitle } = usePageTitle();
-  const { login } = useUser();
+  const { getUser } = useUser();
 
   useEffect(() => {
     STATES.forEach((state) => {
@@ -81,9 +81,7 @@ const Login = ({ interval = 8000 }) => {
         return;
       }
       const user = data?.user;
-      if (user) {
-        login(user);
-      }
+      getUser();
       navigate("/blog");
     } catch (error) {
       const errData = error.response?.data;
@@ -113,9 +111,7 @@ const Login = ({ interval = 8000 }) => {
           toast.error(data.error);
         } else {
           const user = data?.user;
-          if (user) {
-            login(user);
-          }
+          getUser();
           navigate("/blog");
         }
       } catch (error) {

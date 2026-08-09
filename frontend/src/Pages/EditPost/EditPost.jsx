@@ -96,7 +96,7 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
         }
 
         if (postData.post_img) {
-          const imgUrl = getAssetUrl(postData.post_img);
+          const imgUrl = postData?.post_img;
           setExistingImageUrl(imgUrl);
           setPreviewUrl(imgUrl);
         }
@@ -121,15 +121,6 @@ const EditPost = ({ categoriesUrl = "/blog/categories/" }) => {
     return () => URL.revokeObjectURL(objectUrl);
   }, [file, existingImageUrl]);
 
-  // ---- Helper functions ----
-  const getAssetUrl = (path) => {
-    if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    const mediaBase = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8001";
-    return path.startsWith("/")
-      ? `${mediaBase}${path}`
-      : `${mediaBase}/${path}`;
-  };
 
   const getCatValue = (item) => {
     if (!item) return "";

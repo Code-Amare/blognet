@@ -93,7 +93,7 @@ const Post = ({ post }) => {
       return;
     }
 
-    const socket = new WebSocket(`${WS_URL}/ws/like/`);
+    const socket = new WebSocket(`${WS_URL}/like/`);
 
     socketRef.current = socket;
 

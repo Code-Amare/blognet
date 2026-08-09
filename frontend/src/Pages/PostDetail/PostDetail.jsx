@@ -105,7 +105,7 @@ const PostDetail = ({
   useEffect(() => {
     if (!postId || !WS_URL) return;
 
-    const socket = new WebSocket(`${WS_URL}/ws/like/`);
+    const socket = new WebSocket(`${WS_URL}/like/`);
     socketRef.current = socket;
 
     socket.onopen = () => {
@@ -132,15 +132,6 @@ const PostDetail = ({
     };
   }, [postId, onMessage]);
 
-  // ---- Helpers ----
-  const getAssetUrl = (path) => {
-    if (!path) return null;
-    if (path.startsWith("http://") || path.startsWith("https://")) return path;
-    const mediaBase = import.meta.env.VITE_MEDIA_URL || "http://127.0.0.1:8001";
-    return path.startsWith("/")
-      ? `${mediaBase}${path}`
-      : `${mediaBase}/${path}`;
-  };
 
   const extractCommentsArray = (data) => {
     if (Array.isArray(data)) return data;
@@ -247,7 +238,7 @@ const PostDetail = ({
   // Check if current user is the author (compare UUIDs)
   const isAuthor = user?.id === authorUser?.id;
 
-  const coverImage = getAssetUrl(post?.post_img);
+  const coverImage = post?.post_img;
 
   return (
     <article className={styles.detailContainer}>
@@ -309,7 +300,7 @@ const PostDetail = ({
             <div className={styles.authorAvatarWrapper}>
               {authorAvatar ? (
                 <img
-                  src={getAssetUrl(authorAvatar)}
+                  src={authorAvatar}
                   alt={`${authorName} avatar`}
                   className={styles.avatar}
                 />
@@ -389,7 +380,7 @@ const PostDetail = ({
                   <div className={styles.commentAvatarWrapper}>
                     {commenterAvatar ? (
                       <img
-                        src={getAssetUrl(commenterAvatar)}
+                        src={commenterAvatar}
                         alt={`${commenterName} avatar`}
                         className={styles.commentAvatar}
                       />
