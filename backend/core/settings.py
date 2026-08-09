@@ -188,15 +188,33 @@ if DEBUG:
         },
     }
 else:
+    REDIS_URL = os.getenv("REDIS_URL")
+    if not REDIS_URL:
+        host = os.getenv("REDISHOST", "127.0.0.1")
+        port = os.getenv("REDISPORT", "6379")
+        password = os.getenv("REDIS_PASSWORD") or os.getenv("REDISPASSWORD", "")
+        user = os.getenv("REDISUSER", "")
+        
+        if password:
+            REDIS_URL = f"redis://{user}:{password}@{host}:{port}"
+        else:
+            REDIS_URL = f"redis://{host}:{port}"
+
+    # 2. Always guarantee CHANNEL_LAYERS is defined with required socket timeouts
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
                 "hosts": [
-                    os.getenv("REDIS_URL")
+                    {
+                        "address": REDIS_URL,
+                        "socket_timeout": 5,          # Prevents indefinite hangs on Railway
+                        "socket_connect_timeout": 5,
+                        "health_check_interval": 30, # Keeps idle connections alive
+                    }
                 ],
                 "capacity": 1500,
-            "expiry": 10,
+                "expiry": 10,
             },
         },
     }
