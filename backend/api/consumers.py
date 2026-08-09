@@ -7,13 +7,14 @@ class LikeConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         self.group_name = "like"
+        
+        await self.accept()
 
         await self.channel_layer.group_add(
             self.group_name,
             self.channel_name
         )
 
-        await self.accept()
 
         await self.send(
             text_data=json.dumps({
