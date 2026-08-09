@@ -730,7 +730,7 @@ class RefreshTokenView(APIView):
                 str(token.access_token),
                 httponly=True,
                 secure=True,
-                samesite="Lax",
+                samesite="None",
                 max_age=60 * 15,
                 path="/",
             )
@@ -740,7 +740,7 @@ class RefreshTokenView(APIView):
                 str(token),
                 httponly=True,
                 secure=True,
-                samesite="Lax",
+                samesite="None",
                 max_age=60 * 60 * 24 * 7,
                 path="/",
             )
