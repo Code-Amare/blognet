@@ -46,6 +46,7 @@ def send_cookies(request, user):
         httponly=True,
         secure=True,
         samesite="None",
+        partitioned=True,
         max_age=60 * 15,
     )
 
@@ -55,6 +56,7 @@ def send_cookies(request, user):
         httponly=True,
         secure=True,
         samesite="None",
+        partitioned=True,
         max_age=60 * 60 * 24 * 7,
     )
 
@@ -65,6 +67,7 @@ def send_cookies(request, user):
         httponly=False,
         secure=True,
         samesite="None",
+        partitioned=True,
     )
 
     return response
@@ -731,6 +734,7 @@ class RefreshTokenView(APIView):
                 httponly=True,
                 secure=True,
                 samesite="None",
+                partitioned=True,
                 max_age=60 * 15,
                 path="/",
             )
@@ -741,6 +745,7 @@ class RefreshTokenView(APIView):
                 httponly=True,
                 secure=True,
                 samesite="None",
+                partitioned=True,
                 max_age=60 * 60 * 24 * 7,
                 path="/",
             )
