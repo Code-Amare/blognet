@@ -48,7 +48,6 @@ def send_cookies(request, user):
         samesite="None",
         max_age=60 * 15,
     )
-    response.cookies["access_token"]["Partitioned"] = True
 
     response.set_cookie(
         key="refresh_token",
@@ -58,7 +57,6 @@ def send_cookies(request, user):
         samesite="None",
         max_age=60 * 60 * 24 * 7,
     )
-    response.cookies["refresh_token"]["Partitioned"] = True
 
     csrf_token = get_token(request)
     response.set_cookie(
@@ -736,7 +734,6 @@ class RefreshTokenView(APIView):
                 max_age=60 * 15,
                 path="/",
             )
-            response.cookies["access_token"]["Partitioned"] = True
 
             response.set_cookie(
                 "refresh_token",
@@ -747,7 +744,6 @@ class RefreshTokenView(APIView):
                 max_age=60 * 60 * 24 * 7,
                 path="/",
             )
-            response.cookies["refresh_token"]["Partitioned"] = True
 
             return response
         except TokenError as e:
