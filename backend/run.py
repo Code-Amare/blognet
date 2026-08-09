@@ -25,7 +25,7 @@ def main():
         "core.asgi:application",
 
         "--host",
-        "0.0.0.0",
+        "127.0.0.1",
 
         "--port",
         "8000",
