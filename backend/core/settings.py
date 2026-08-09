@@ -210,6 +210,7 @@ else:
                 "hosts": [
                     {
                         "address": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0"),
+                        "socket_timeout": None,
                         "socket_keepalive": True,
                         "socket_keepalive_options": {
                             socket.TCP_KEEPIDLE: 30,
