@@ -201,16 +201,26 @@ if DEBUG:
             },
         }
 else:
+    import socket
+
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
                 "hosts": [
-                    os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+                    {
+                        "address": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0"),
+                        "socket_keepalive": True,
+                        "socket_keepalive_options": {
+                            socket.TCP_KEEPIDLE: 30,
+                            socket.TCP_KEEPINTVL: 10,
+                            socket.TCP_KEEPCNT: 3,
+                        },
+                    }
                 ],
             },
         },
-    }
+}
 
 
 SIMPLE_JWT = {
