@@ -26,14 +26,16 @@
 		reverse_proxy http://blognet.railway.internal:8000
 	}
 
-	root * dist
-	file_server {
-		hide .git
-		hide .env*
+	handle {
+		root * dist
+		file_server {
+			hide .git
+			hide .env*
+		}
+		encode {
+			gzip
+			zstd
+		}
+		try_files {path} /index.html
 	}
-	encode {
-		gzip
-		zstd
-	}
-	try_files {path} /index.html
 }
