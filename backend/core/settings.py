@@ -181,11 +181,25 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 ASGI_APPLICATION = "core.asgi.application"
 
 if DEBUG:
-    CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
-        },
-    }
+    PUBLIC_REDIS_URL = os.getenv("PUBLIC_REDIS_URL", "")
+    print(PUBLIC_REDIS_URL)
+    if PUBLIC_REDIS_URL:
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels_redis.core.RedisChannelLayer",
+                "CONFIG": {
+                    "hosts": [
+                       PUBLIC_REDIS_URL
+                    ],
+                },
+            },
+        }
+    else:
+        CHANNEL_LAYERS = {
+            "default": {
+                "BACKEND": "channels.layers.InMemoryChannelLayer",
+            },
+        }
 else:
     CHANNEL_LAYERS = {
         "default": {
@@ -194,8 +208,6 @@ else:
                 "hosts": [
                     os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
                 ],
-                "capacity": 1500,
-                "expiry": 10,
             },
         },
     }
