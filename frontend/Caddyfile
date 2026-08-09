@@ -1,0 +1,39 @@
+:{$PORT} {
+	log {
+		format json
+	}
+
+	respond /health 200
+
+	header {
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy http://blognet.railway.internal:8000
+	}
+
+	handle /admin/* {
+		reverse_proxy http://blognet.railway.internal:8000
+	}
+
+	handle /static/* {
+		reverse_proxy http://blognet.railway.internal:8000
+	}
+
+	handle /ws/* {
+		reverse_proxy http://blognet.railway.internal:8000
+	}
+
+	root * dist
+	file_server {
+		hide .git
+		hide .env*
+	}
+	encode {
+		gzip
+		zstd
+	}
+	try_files {path} /index.html
+}
